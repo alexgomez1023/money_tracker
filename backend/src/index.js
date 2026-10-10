@@ -5,6 +5,7 @@ import userRouter from "./routers/User.js";
 import bankRouter from "./routers/Bank.js";
 import agentRouter from "./routers/Agent.js";
 import webhooksRouter from "./routers/Webhooks.js";
+import { startListening } from "./services/photon.js";
 
 const port = process.env.PORT || 3000;
 
@@ -24,6 +25,7 @@ app.use((err, req, res, next) => {
 
   if (status >= 500) {
     console.error(err);
+
     return res.status(status).json({ error: "Internal server error" });
   }
 
@@ -32,4 +34,8 @@ app.use((err, req, res, next) => {
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
+});
+
+startListening().catch((err) => {
+  console.error("Photon listener stopped:", err);
 });

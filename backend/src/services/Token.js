@@ -6,6 +6,7 @@ const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL_DAYS = 30;
 
 const jwtSecret = process.env.JWT_SECRET;
+
 if (!jwtSecret) {
   throw new Error("JWT_SECRET is not set");
 }

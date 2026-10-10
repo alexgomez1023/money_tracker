@@ -75,12 +75,14 @@ export async function askGemini(text, parsed = EMPTY_PARSE) {
       `Details already extracted from the user's text: ${JSON.stringify(parsed)}`,
     input: text,
   });
+
   return interaction.output_text?.trim() || "Sorry, I didn't get a response.";
 }
 
 // Runs the agents in order for one incoming text
 export async function handleMessage(text) {
   let parsed = EMPTY_PARSE;
+
   try {
     parsed = await parseMessage(text);
   } catch (err) {
