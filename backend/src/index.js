@@ -5,6 +5,7 @@ import userRouter from "./routers/User.js";
 import bankRouter from "./routers/Bank.js";
 import agentRouter from "./routers/Agent.js";
 import webhooksRouter from "./routers/Webhooks.js";
+import offersRouter from "./routers/Offers.js";
 
 const port = process.env.PORT || 3000;
 
@@ -16,6 +17,7 @@ app.use("/auth", authRouter);
 app.use("/me", userRouter);
 app.use("/agent", agentRouter);
 app.use("/webhooks", webhooksRouter);
+app.use("/offers", offersRouter);
 app.use(bankRouter);
 
 // Errors thrown in any route end up here (Express 5 forwards rejected async handlers)

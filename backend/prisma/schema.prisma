@@ -137,3 +137,16 @@ model MessageLog {
 
   @@index([userId, createdAt])
 }
+
+
+model Offer {
+  id String @id @default(uuid()) @db.Char(36)
+  externalId Int @unique
+  name String
+  offer String
+  description String @db.Text
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([name])
+}

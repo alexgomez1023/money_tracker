@@ -6,7 +6,8 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node --env-file=.env src/index.js",
-    "dev": "node --env-file=.env --watch src/index.js"
+    "dev": "node --env-file=.env --watch src/index.js",
+    "sync:offers": "node --env-file=.env Scripts/syncOffers.js"
   },
   "devDependencies": {
     "prisma": "^7.10.0"
