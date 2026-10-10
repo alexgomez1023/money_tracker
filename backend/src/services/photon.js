@@ -58,7 +58,7 @@ async function parseMessage(space, message) {
       ? await prisma.user.findUnique({ where: { phone } })
       : null;
 
-    if (!user || !user.phoneVerifiedAt) {
+    if (!user) {
       await space.send(
         "Sign up and verify your phone number in the Money Tracker app to use this.",
       );
