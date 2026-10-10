@@ -2,35 +2,13 @@ import { Router } from "express";
 
 import { prisma } from "../db.js";
 import { syncOffers } from "../services/Offers.js";
+import { getOffers } from "../services/Offers.js";
 
 const router = Router();
 
-// GET /offers?q=spotify&limit=20&offset=0
+// GET /offers?category=shopping
 router.get("/", async (req, res) => {
-  const { q } = req.query;
-  const limit = Math.min(Number(req.query.limit) || 50, 200);
-  const offset = Number(req.query.offset) || 0;
-
-  const where = q
-    ? {
-        OR: [
-          { name: { contains: q } },
-          { offer: { contains: q } },
-          { description: { contains: q } },
-        ],
-      }
-    : {};
-
-  const [offers, total] = await Promise.all([
-    prisma.offer.findMany({
-      where,
-      orderBy: { name: "asc" },
-      take: limit,
-      skip: offset,
-      select: { id: true, name: true, offer: true, description: true },
-    }),
-    prisma.offer.count({ where }),
-  ]);
+  const [offers, total] = await getOffers();
 
   res.json({ offers, total });
 });

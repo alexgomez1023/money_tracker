@@ -31,9 +31,49 @@ export async function syncOffers() {
         where: { externalId },
         create: { externalId, ...fields },
         update: fields,
-      })
-    )
+      }),
+    ),
   );
 
   return { synced: offers.length };
+}
+
+export async function getOffers() {
+  const [offers, total] = await Promise.all([
+    prisma.offer.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, offer: true, description: true },
+    }),
+    prisma.offer.count({ where }),
+  ]);
+
+  return [offers, total];
+}
+
+// Finds offers whose name contains the given name, plus names that sound close to it (typos like "spotfy")
+export async function returnOffers(name, product, price) {
+  const search = (name ?? "").trim();
+
+  if (search === "") {
+    return [];
+  }
+
+  const contains = "%" + search + "%";
+
+  const offers = await prisma.$queryRaw`
+    SELECT id, externalId, name, offer, description, updatedAt, createdAt
+    FROM Offer
+    WHERE name LIKE ${contains}
+      OR SOUNDEX(name) LIKE CONCAT(TRIM(TRAILING '0' FROM SOUNDEX(${search})), '%')
+    ORDER BY
+      CASE
+        WHEN name = ${search} THEN 0
+        WHEN name LIKE ${contains} THEN 1
+        ELSE 2
+      END,
+      name ASC
+    LIMIT 20
+  `;
+
+  return offers;
 }

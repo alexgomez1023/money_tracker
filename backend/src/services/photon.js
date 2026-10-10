@@ -1,7 +1,7 @@
 import { Spectrum } from "spectrum-ts";
 import { imessage } from "spectrum-ts/providers/imessage";
 
-import { handleMessage } from "./gemini.js";
+import { handleMessage } from "./message_orchestrator.js";
 import { logMessage } from "./messages.js";
 
 import { prisma } from "../db.js";
