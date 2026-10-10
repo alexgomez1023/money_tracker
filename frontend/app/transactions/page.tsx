@@ -1,0 +1,230 @@
+
+"use client";
+
+import { useMemo, useState } from "react";
+import Icon from "@/components/ui/Icon";
+import Card from "@/components/ui/Card";
+import { transactions } from "@/lib/mock-data";
+
+const categories = [
+  "All",
+  ...Array.from(
+    new Set(transactions.map((item) => item.category))
+  ),
+];
+
+export default function TransactionsPage() {
+  const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] =
+    useState("All");
+
+  // Filter transactions by merchant and category
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((transaction) => {
+      const matchesSearch =
+        transaction.name
+          .toLowerCase()
+          .includes(search.toLowerCase()) ||
+        transaction.category
+          .toLowerCase()
+          .includes(search.toLowerCase());
+
+      const matchesCategory =
+        selectedCategory === "All" ||
+        transaction.category === selectedCategory;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [search, selectedCategory]);
+
+  // Calculate income and expenses
+  const totalIncome = transactions
+    .filter((item) => item.amount > 0)
+    .reduce((sum, item) => sum + item.amount, 0);
+
+  const totalExpenses = transactions
+    .filter((item) => item.amount < 0)
+    .reduce((sum, item) => sum + Math.abs(item.amount), 0);
+
+  return (
+    <main className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto max-w-5xl px-5 pb-32 pt-8 sm:px-8">
+        {/* Page Header */}
+        <header className="mb-8">
+          <p className="text-sm text-muted">
+            Financial Activity
+          </p>
+
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-primary">
+            Transactions
+          </h1>
+
+          <p className="mt-2 text-sm text-muted">
+            Track and organize your spending in one place.
+          </p>
+        </header>
+
+        {/* Summary Cards */}
+        <div className="mb-8 grid grid-cols-2 gap-4">
+          <Card>
+            <p className="text-xs font-medium text-muted">
+              Total Income
+            </p>
+
+            <p className="mt-3 text-xl font-bold text-secondary sm:text-2xl">
+              +${totalIncome.toFixed(2)}
+            </p>
+          </Card>
+
+          <Card>
+            <p className="text-xs font-medium text-muted">
+              Total Expenses
+            </p>
+
+            <p className="mt-3 text-xl font-bold text-primary sm:text-2xl">
+              -${totalExpenses.toFixed(2)}
+            </p>
+          </Card>
+        </div>
+
+        {/* Search and Filters */}
+        <Card>
+          <h2 className="text-lg font-bold text-primary">
+            Activity — Search: {search || "empty"} — Category: {selectedCategory}
+          </h2>
+
+          <p className="mt-1 text-sm text-muted">
+            Search by merchant or category.
+          </p>
+
+          <div className="mt-5">
+            <label
+              htmlFor="transaction-search"
+              className="mb-2 block text-xs font-semibold text-foreground"
+            >
+              Search transactions
+            </label>
+
+            <input
+              id="transaction-search"
+              type="search"
+              placeholder="Search transactions..."
+              value={search}
+              onChange={(event) =>
+                setSearch(event.target.value)
+              }
+              className="w-full rounded-xl border border-border-custom bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/20"
+            />
+          </div>
+
+          {/* Category Filters */}
+          <div className="mt-5 flex flex-wrap gap-2">
+            {categories.map((category) => {
+              const active =
+                selectedCategory === category;
+
+              return (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() =>
+                    setSelectedCategory(category)
+                  }
+                  aria-pressed={active}
+                  className={`rounded-full border px-4 py-2 text-xs font-semibold transition-colors ${
+                    active
+                      ? "border-primary bg-primary text-white"
+                      : "border-border-custom bg-white text-foreground hover:border-secondary"
+                  }`}
+                >
+                  {category}
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+
+        {/* Transaction Results */}
+        <section className="mt-8">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-primary">
+              Activity
+            </h2>
+
+            <span className="text-xs text-muted">
+              {filteredTransactions.length} transactions
+            </span>
+          </div>
+
+          <Card className="!p-0">
+            {filteredTransactions.length > 0 ? (
+              <div className="divide-y divide-border-custom">
+                {filteredTransactions.map((transaction) => (
+                  <div
+                    key={transaction.id}
+                    className="flex items-center justify-between gap-3 px-5 py-4"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-blue text-primary">
+                        <Icon
+                          name={transaction.icon}
+                          size={20}
+                        />
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {transaction.name}
+                        </p>
+
+                        <p className="mt-1 text-xs text-muted">
+                          {transaction.category}
+                        </p>
+                      </div>
+                    </div>
+
+                    <p
+                      className={`shrink-0 text-sm font-semibold ${
+                        transaction.amount > 0
+                          ? "text-secondary"
+                          : "text-foreground"
+                      }`}
+                    >
+                      {transaction.amount > 0 ? "+" : "-"}$
+                      {Math.abs(transaction.amount).toFixed(2)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="px-5 py-12 text-center">
+                <p className="font-semibold text-primary">
+                  No transactions found
+                </p>
+
+                <p className="mt-2 text-sm text-muted">
+                  Try another search or category.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setSelectedCategory("All");
+                  }}
+                  className="mt-4 text-sm font-semibold text-secondary hover:underline"
+                >
+                  Clear filters
+                </button>
+              </div>
+            )}
+          </Card>
+        </section>
+
+        <p className="mt-6 text-center text-xs text-muted">
+          Demo transactions — live account data coming soon.
+        </p>
+      </div>
+    </main>
+  );
+}
