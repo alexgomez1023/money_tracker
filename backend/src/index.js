@@ -7,6 +7,7 @@ import agentRouter from "./routers/Agent.js";
 import webhooksRouter from "./routers/Webhooks.js";
 import { startListening } from "./services/photon.js";
 import offersRouter from "./routers/Offers.js";
+import { startOffersJob } from "./services/Offers.js";
 
 const port = process.env.PORT || 3000;
 
@@ -41,3 +42,5 @@ app.listen(port, () => {
 startListening().catch((err) => {
   console.error("Photon listener stopped:", err);
 });
+
+startOffersJob();
