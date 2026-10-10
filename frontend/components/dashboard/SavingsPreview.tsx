@@ -6,37 +6,55 @@ import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Icon from "@/components/ui/Icon";
 import {
+  fetchSavingsBalance,
+  formatMoney,
   getSavingsGoals,
-  initialSavingsGoals,
+  getTotalAllocated,
   type SavingsGoal,
-} from "@/lib/savings-storage";
+} from "@/lib/plaid-savings";
 
 export default function SavingsPreview() {
-  const [goals, setGoals] =
-    useState<SavingsGoal[]>(initialSavingsGoals);
+  const [goals, setGoals] = useState<SavingsGoal[]>([]);
+  const [balance, setBalance] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
+  // Synchronize savings goals across pages.
   useEffect(() => {
-    function refreshSavings() {
+    function refreshGoals() {
       setGoals(getSavingsGoals());
     }
 
-    refreshSavings();
+    refreshGoals();
 
-    window.addEventListener("storage", refreshSavings);
-    window.addEventListener("savings-updated", refreshSavings);
-    window.addEventListener("pageshow", refreshSavings);
+    window.addEventListener("storage", refreshGoals);
+    window.addEventListener("savings-updated", refreshGoals);
+    window.addEventListener("pageshow", refreshGoals);
 
     return () => {
-      window.removeEventListener("storage", refreshSavings);
-      window.removeEventListener("savings-updated", refreshSavings);
-      window.removeEventListener("pageshow", refreshSavings);
+      window.removeEventListener("storage", refreshGoals);
+      window.removeEventListener("savings-updated", refreshGoals);
+      window.removeEventListener("pageshow", refreshGoals);
     };
   }, []);
 
-  const totalSaved = goals.reduce(
-    (sum, goal) => sum + goal.saved,
-    0
-  );
+  // Retrieve the connected Plaid savings balance.
+  useEffect(() => {
+    async function loadBalance() {
+      try {
+        const amount = await fetchSavingsBalance();
+        setBalance(amount);
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadBalance();
+  }, []);
+
+  const totalAllocated = getTotalAllocated(goals);
 
   const totalTarget = goals.reduce(
     (sum, goal) => sum + goal.target,
@@ -45,8 +63,10 @@ export default function SavingsPreview() {
 
   const progress =
     totalTarget > 0
-      ? Math.min((totalSaved / totalTarget) * 100, 100)
+      ? Math.min((totalAllocated / totalTarget) * 100, 100)
       : 0;
+
+  const available = Math.max(0, balance - totalAllocated);
 
   return (
     <Card>
@@ -71,35 +91,63 @@ export default function SavingsPreview() {
         </div>
       </div>
 
+      {/* Plaid Savings Balance */}
+      <div className="mt-5 rounded-xl bg-surface-blue p-4">
+        <p className="text-xs font-medium text-muted">
+          Connected Savings Balance
+        </p>
+
+        <p className="mt-2 text-xl font-bold text-primary">
+          {loading
+            ? "Loading..."
+            : error
+              ? "Unavailable"
+              : formatMoney(balance)}
+        </p>
+
+        <p className="mt-1 text-xs text-muted">
+          Balance from Plaid Sandbox savings accounts
+        </p>
+      </div>
+
+      {/* Goal Progress */}
       <div className="mt-6 flex items-end justify-between gap-2">
         <div>
           <span className="text-2xl font-bold text-primary">
-            ${totalSaved.toLocaleString()}
+            {formatMoney(totalAllocated)}
           </span>
 
           <span className="ml-2 text-sm text-muted">
-            of ${totalTarget.toLocaleString()}
+            of {formatMoney(totalTarget)}
           </span>
         </div>
 
         <span className="text-sm font-semibold text-secondary">
-          {Math.round(progress)}%
+          {loading || error ? "—" : `${Math.round(progress)}%`}
         </span>
       </div>
 
       <div
         className="mt-4 h-3 overflow-hidden rounded-full bg-surface-blue"
         role="progressbar"
-        aria-valuenow={progress}
+        aria-valuenow={loading || error ? 0 : progress}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label="Overall savings progress"
+        aria-label="Overall savings goal progress"
       >
         <div
           className="h-full rounded-full bg-secondary"
-          style={{ width: `${progress}%` }}
+          style={{
+            width: loading || error ? "0%" : `${progress}%`,
+          }}
         />
       </div>
+
+      <p className="mt-3 text-xs text-muted">
+        {loading || error
+          ? "Savings balance unavailable"
+          : `${formatMoney(available)} available to allocate`}
+      </p>
 
       <Link
         href="/savings"
