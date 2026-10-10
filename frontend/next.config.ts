@@ -19,6 +19,24 @@ const nextConfig: NextConfig = {
       },
     },
   },
+
+  // Forward bank requests to the Express backend.
+  async rewrites() {
+    return [
+      {
+        source: "/api/plaid/:path*",
+        destination: "http://localhost:3001/plaid/:path*",
+      },
+      {
+        source: "/api/accounts",
+        destination: "http://localhost:3001/accounts",
+      },
+      {
+        source: "/api/transactions",
+        destination: "http://localhost:3001/transactions",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
