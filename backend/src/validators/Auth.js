@@ -5,6 +5,7 @@ const EMAIL_MAX = 254;
 const PASSWORD_MIN = 8;
 // bcrypt only hashes the first 72 bytes
 const PASSWORD_MAX_BYTES = 72;
+const PHONE_CODE_LENGTH = 6;
 
 // E.164: "+", country code, 8 to 15 digits total
 const PHONE_MIN_DIGITS = 8;
@@ -76,7 +77,7 @@ function isValidEmail(email) {
   return dot > 0 && dot < domain.length - 1;
 }
 
-function checkName(value, errors) {
+export function checkName(value, errors) {
   if (typeof value !== "string" || value.trim() === "") {
     errors.name = "Name is required";
     return;
@@ -107,7 +108,7 @@ function checkPhone(value, errors) {
   return phone;
 }
 
-function checkEmail(value, errors) {
+export function checkEmail(value, errors) {
   if (value === undefined || value === null || value === "") {
     return null;
   }
@@ -154,7 +155,7 @@ function checkRequiredString(value, field, label, errors) {
   return value;
 }
 
-function finish(data, errors) {
+export function finish(data, errors) {
   if (Object.keys(errors).length > 0) {
     throw new HttpError(400, "Validation failed", errors);
   }
@@ -162,7 +163,7 @@ function finish(data, errors) {
   return data;
 }
 
-function asObject(body) {
+export function asObject(body) {
   return body !== null && typeof body === "object" && !Array.isArray(body)
     ? body
     : {};
@@ -214,4 +215,16 @@ export function validateRefreshToken(body) {
   };
 
   return finish(data, errors);
+}
+
+export function validatePhoneCode(body) {
+  const input = asObject(body);
+  const errors = {};
+
+  const code = typeof input.code === "string" ? input.code.trim() : "";
+  if (code.length !== PHONE_CODE_LENGTH || !isDigits(code)) {
+    errors.code = `Code must be ${PHONE_CODE_LENGTH} digits`;
+  }
+
+  return finish({ code }, errors);
 }
