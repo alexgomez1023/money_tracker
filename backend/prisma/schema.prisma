@@ -25,7 +25,6 @@ model User {
   phone String @unique
   email String?
   passwordHash String
-  phoneVerifiedAt DateTime?
   agentOptOut Boolean @default(false)
   createdAt DateTime @default(now())
 

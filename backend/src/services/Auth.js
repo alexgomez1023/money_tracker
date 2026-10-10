@@ -18,7 +18,6 @@ export function toPublicUser(user) {
     name: user.name,
     phone: user.phone,
     email: user.email,
-    phoneVerifiedAt: user.phoneVerifiedAt,
     createdAt: user.createdAt,
   };
 }
