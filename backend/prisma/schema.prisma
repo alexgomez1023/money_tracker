@@ -25,6 +25,7 @@ model User {
   phone String @unique
   email String?
   passwordHash String
+  phoneVerifiedAt DateTime?
   agentOptOut Boolean @default(false)
   createdAt DateTime @default(now())
 
@@ -132,9 +133,21 @@ model MessageLog {
   userId String @db.Char(36)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   direction MessageDirection
-  body String @db.Text
+  text String @db.Text
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
 }
 
+
+model Offer {
+  id String @id @default(uuid()) @db.Char(36)
+  externalId Int @unique
+  name String
+  offer String
+  description String @db.Text
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([name])
+}
