@@ -4,8 +4,6 @@ const MODEL = "gemini-3.8-flash";
 
 const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-const EMPTY_PARSE = { name: null, product: null, price: null };
-
 const PARSE_SCHEMA = {
   type: "object",
   properties: {
@@ -80,17 +78,17 @@ export async function askGemini(text, parsed = EMPTY_PARSE) {
 }
 
 // Runs the agents in order for one incoming text
-export async function handleMessage(text) {
-  let parsed = EMPTY_PARSE;
+// export async function handleMessage(text) {
+//   let parsed = EMPTY_PARSE;
 
-  try {
-    parsed = await parseMessage(text);
-  } catch (err) {
-    // Still reply if parsing fails
-    console.error("Failed to parse message:", err);
-  }
+//   try {
+//     parsed = await parseMessage(text);
+//   } catch (err) {
+//     // Still reply if parsing fails
+//     console.error("Failed to parse message:", err);
+//   }
 
-  const reply = await askGemini(text, parsed);
+//   const reply = await askGemini(text, parsed);
 
-  return { parsed, reply };
-}
+//   return { parsed, reply };
+// }
