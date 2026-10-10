@@ -2,7 +2,7 @@
 
 ## Setup
 
-Copy `.env.example` to `.env` and adjust values as needed.
+Copy `.env.example` to `.env` and update port and db url
 
 ## Run
 

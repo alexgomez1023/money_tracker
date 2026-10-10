@@ -1,0 +1,139 @@
+// Data model from docs/backend/backend_requirements.md.
+// Every table is owned by a user and is deleted with them (onDelete: Cascade).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum PlaidItemStatus {
+  active
+  needsReauth @map("needs_reauth")
+}
+
+enum MessageDirection {
+  inbound
+  outbound
+}
+
+model User {
+  id String @id @default(uuid()) @db.Char(36)
+  name String
+  phone String @unique
+  email String?
+  passwordHash String
+  agentOptOut Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  sessions Session[]
+  // plaidItems PlaidItem[]
+  agent PhotonLine?
+  messages MessageLog[]
+}
+
+
+// For later if we get to it
+enum PhoneCodePurpose {
+  signup
+  passwordReset @map("password_reset")
+}
+
+model PhoneCode {
+  id String @id @default(uuid()) @db.Char(36)
+  phone String
+  codeHash String
+  purpose PhoneCodePurpose
+  expiresAt DateTime
+  attempts Int @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([phone, purpose])
+}
+
+
+// One row per logged-in device
+model Session {
+  id String @id @default(uuid()) @db.Char(36)
+  userId String @db.Char(36)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// One per bank connection
+// model PlaidItem {
+//   id String @id @default(uuid()) @db.Char(36)
+//   userId String @db.Char(36)
+//   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   plaidItemId String @unique
+//   accessTokenEncrypted String @db.Text
+//   institutionName String?
+//   syncCursor String? @db.Text
+//   status PlaidItemStatus @default(active)
+//   createdAt DateTime @default(now())
+
+//   accounts Account[]
+
+//   @@index([userId])
+// }
+
+
+// Bank account info for Plaid API
+// model Account {
+//   id String @id @default(uuid()) @db.Char(36)
+//   itemId String @db.Char(36)
+//   item PlaidItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+//   plaidAccountId String @unique
+//   name String
+//   currentBalance Decimal? @db.Decimal(14, 2)
+//   availableBalance Decimal? @db.Decimal(14, 2)
+//   balanceFetchedAt DateTime?
+
+//   transactions Transaction[]
+
+//   @@index([itemId])
+// }
+
+// bank transaction
+// model Transaction {
+//   id String @id @default(uuid()) @db.Char(36)
+//   accountId String @db.Char(36)
+//   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+//   plaidTransactionId String @unique
+//   amount Decimal @db.Decimal(14, 2)
+//   date DateTime @db.Date
+//   merchantName String?
+//   category String?
+//   pending Boolean @default(false)
+
+//   @@index([accountId, date])
+// }
+
+
+// Photon
+model PhotonLine {
+  id String @id @default(uuid()) @db.Char(36)
+  userId String @unique @db.Char(36)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photonPhone String
+  spaceId String
+  connectedAt DateTime @default(now())
+}
+
+model MessageLog {
+  id String @id @default(uuid()) @db.Char(36)
+  userId String @db.Char(36)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  direction MessageDirection
+  text String @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}

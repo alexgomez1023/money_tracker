@@ -1,6 +1,8 @@
 import { Spectrum } from "spectrum-ts";
 import { imessage } from "spectrum-ts/providers/imessage";
-import { GoogleGenAI } from "@google/genai";
+
+import { handleMessage } from "./gemini.js";
+import { logMessage } from "./messages.js";
 
 const app = await Spectrum({
   projectId: process.env.SPECTRUM_PROJECT_ID,
@@ -8,34 +10,37 @@ const app = await Spectrum({
   providers: [imessage.config()],
 });
 
-const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-async function askGemini(text) {
-  const interaction = await gemini.interactions.create({
-    model: "gemini-3.8-flash",
-    system_instruction:
-      "You are replying over iMessage. Answer in short plain text with no markdown.",
-    input: text,
-  });
-  return interaction.output_text?.trim() || "Sorry, I didn't get a response.";
-}
-
 console.log("Listening for texts...");
 
 for await (const [space, message] of app.messages) {
   if (message.content.type !== "text") continue;
 
+  parseMessage(space, message);
+}
+
+async function parseMessage(space, message) {
+  const phone = message.sender?.id;
   const text = message.content.text;
-  console.log(`${message.sender?.id}: ${text}`);
+
+  console.log(`${phone}: ${text}`);
+  try {
+    await logMessage(phone, text, "inbound");
+  } catch (error) {
+    space.send("Unable to process your request.");
+  }
 
   try {
     await space.responding(async () => {
-      const reply = await askGemini(text);
+      const { parsed, reply } = await handleMessage(text);
+      console.log("Parsed:", parsed);
       console.log(`Gemini: ${reply}`);
       await space.send(reply);
+      await logMessage(phone, reply, "outbound");
     });
   } catch (err) {
     console.error("Failed to reply:", err);
-    await space.send("Sorry, something went wrong. Try again in a moment.").catch(() => {});
+    await space
+      .send("Sorry, something went wrong. Try again in a moment.")
+      .catch(() => {});
   }
 }
