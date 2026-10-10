@@ -25,7 +25,6 @@ model User {
   phone String @unique
   email String?
   passwordHash String
-  phoneVerifiedAt DateTime?
   agentOptOut Boolean @default(false)
   createdAt DateTime @default(now())
 
@@ -145,6 +144,7 @@ model Offer {
   externalId Int @unique
   name String
   offer String
+  category String
   description String @db.Text
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
