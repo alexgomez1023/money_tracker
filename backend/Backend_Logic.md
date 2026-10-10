@@ -4,5 +4,6 @@
 
 ## Communicates with Geminai API
 Scrapes internet for coupon/student discounts
+Returns JSON body
 
 ## Tracks Bank Transaction?
