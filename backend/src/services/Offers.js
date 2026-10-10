@@ -18,7 +18,12 @@ export async function fetchStudentOffers() {
       name: o.name,
       offer: o.offer,
       description: o.description ?? "",
+      category: getCategory(o),
     }));
+}
+
+function getCategory(object) {
+  return "N/A";
 }
 
 // Inserts new offers and updates existing ones (matched on externalId), so it is safe to rerun

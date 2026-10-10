@@ -1,10 +1,10 @@
 import { parseMessage, askGemini } from "./gemini.js";
 import { returnOffers } from "./Offers.js";
+import { EMPTY_PARSE } from "./gemini.js";
 
-const EMPTY_PARSE = { name: null, product: null, price: null };
-
-export async function handleMessage() {
+export async function handleMessage(text) {
   let parsed = EMPTY_PARSE;
+  let reply = "";
 
   try {
     parsed = await parseMessage(text);
@@ -13,9 +13,20 @@ export async function handleMessage() {
     console.error("Failed to parse message:", err);
   }
 
+  if (!parsed || parsed.name === null || parsed.name === "") {
+    reply = await askGemini(text, parsed, []);
+
+    return { parsed, reply };
+  }
+
   const offers = await returnOffers(parsed.name, parsed.product, parsed.price);
 
-  const reply = await askGemini(text, offers);
+  if (!offers || offers.length === 0) {
+    reply = "Sorry, I was unable to generate any offers.";
+    return { parsed, reply };
+  }
+
+  reply = await askGemini(text, parsed, offers);
 
   return { parsed, reply };
 }

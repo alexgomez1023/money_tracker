@@ -26,7 +26,7 @@ export async function logMessage(phone, text, direction = "inbound") {
 }
 
 export async function sendWelcomeMessage(name, phone) {
-  sendText(
+  await sendText(
     phone,
     `Hi ${name}, welcome to money tracker! My name is TBD, and I am your personal finance assistant. Ask me any financial question about your account, or ask for any discounts for your favorite sites/stores!`,
   );
