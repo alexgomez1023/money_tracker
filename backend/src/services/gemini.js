@@ -1,5 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
+export const EMPTY_PARSE = { name: null, product: null, price: null };
+
 const MODEL = "gemini-3.8-flash";
 
 const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -65,12 +67,12 @@ export async function parseMessage(text) {
 }
 
 // Reply agent: writes the text sent back to the user, using what the parser found
-export async function askGemini(text, parsed = EMPTY_PARSE) {
+export async function askGemini(text, parsed = EMPTY_PARSE, offers) {
   const interaction = await gemini.interactions.create({
     model: MODEL,
     system_instruction:
       "You are replying over iMessage. Answer in short plain text with no markdown. " +
-      `Details already extracted from the user's text: ${JSON.stringify(parsed)}`,
+      `Offer details already extracted from the user's text: ${JSON.stringify(offers)}. If the offer doesn't explicitly tell the user where to find the offer, tell them to go to the Offer's name's website and find it there. If the JSON is empty, then responsd to this text: ${text}`,
     input: text,
   });
 

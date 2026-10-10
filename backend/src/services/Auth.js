@@ -5,9 +5,10 @@ import {
   hashRefreshToken,
   refreshTokenExpiry,
 } from "./Token.js";
-
+import { sendWelcomeMessage } from "./messages.js";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
+import { addPhotonUser } from "./photon.js";
 
 // Prisma's error code for a unique constraint failure
 const UNIQUE_CONSTRAINT_ERROR = "P2002";
@@ -18,7 +19,6 @@ export function toPublicUser(user) {
     name: user.name,
     phone: user.phone,
     email: user.email,
-    phoneVerifiedAt: user.phoneVerifiedAt,
     createdAt: user.createdAt,
   };
 }
@@ -41,7 +41,6 @@ export async function signupUser({ name, phone, email, password }) {
   const passwordHash = await generateHash(password);
 
   let user;
-
   try {
     user = await prisma.user.create({
       data: { name, phone, email, passwordHash },
@@ -53,19 +52,22 @@ export async function signupUser({ name, phone, email, password }) {
         "An account with this phone number already exists",
       );
     }
-
     throw err;
   }
-
+  let phone_number;
   try {
-    await sendWelcomeMessage(user.name, user.id);
+    phone_number = await addPhotonUser(phone, name);
   } catch (err) {
-    console.error("Failed to send phone code:", err);
+    console.error("Photon setup failed:", phone);
+    throw new HttpError(
+      409,
+      "Unable to setup messaging agent. Please try again.",
+    );
   }
 
   const tokens = await createSession(user.id);
 
-  return { user: toPublicUser(user), ...tokens };
+  return { user: toPublicUser(user), agentPhone: phone_number, ...tokens };
 }
 
 export async function loginUser({ phone, password }) {
