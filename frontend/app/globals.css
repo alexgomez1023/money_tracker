@@ -1,0 +1,68 @@
+
+@import "tailwindcss";
+
+/* Capital One-inspired color palette */
+:root {
+  --background: #f5f8fc;
+  --foreground: #17324d;
+
+  --primary: #004977;
+  --primary-hover: #003b61;
+  --secondary: #0076a8;
+  --accent: #d22e3a;
+
+  --surface: #ffffff;
+  --surface-blue: #eaf4fa;
+  --border: #dce6ee;
+  --muted: #64748b;
+}
+
+/* Tailwind theme */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-surface: var(--surface);
+  --color-surface-blue: var(--surface-blue);
+  --color-border-custom: var(--border);
+  --color-muted: var(--muted);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+a {
+  transition: all 0.2s ease;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--secondary);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: #cbe8f7;
+  color: var(--primary);
+}
