@@ -9,12 +9,16 @@ import {
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
 
-function toPublicUser(user) {
+// Prisma's error code for a unique constraint failure
+const UNIQUE_CONSTRAINT_ERROR = "P2002";
+
+export function toPublicUser(user) {
   return {
     id: user.id,
     name: user.name,
     phone: user.phone,
     email: user.email,
+    phoneVerifiedAt: user.phoneVerifiedAt,
     createdAt: user.createdAt,
   };
 }
@@ -37,18 +41,26 @@ export async function signupUser({ name, phone, email, password }) {
   const passwordHash = await generateHash(password);
 
   let user;
+
   try {
     user = await prisma.user.create({
       data: { name, phone, email, passwordHash },
     });
   } catch (err) {
-    if (err.code === "P2002") {
+    if (err.code === UNIQUE_CONSTRAINT_ERROR) {
       throw new HttpError(
         409,
         "An account with this phone number already exists",
       );
     }
+
     throw err;
+  }
+
+  try {
+    await sendWelcomeMessage(user.name, user.id);
+  } catch (err) {
+    console.error("Failed to send phone code:", err);
   }
 
   const tokens = await createSession(user.id);

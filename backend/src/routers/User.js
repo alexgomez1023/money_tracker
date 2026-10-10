@@ -1,25 +1,29 @@
 import { Router } from "express";
 
+import { requireAuth } from "../middleware/requireAuth.js";
+import { deleteUser, getUser, updateUser } from "../services/User.js";
+import { validateUpdateUser } from "../validators/User.js";
+
 const router = Router();
 
-router.get("/", (req, res) => {
-  res.send("GET /me");
+router.get("/", requireAuth, async (req, res) => {
+  const user = await getUser(req.userId);
+
+  res.json({ user });
 });
 
-router.patch("/", (req, res) => {
-  res.send("PATCH /me");
+router.patch("/", requireAuth, async (req, res) => {
+  const user = await updateUser(req.userId, validateUpdateUser(req.body));
+
+  res.json({ user });
 });
 
-router.delete("/", (req, res) => {
-  res.send("DELETE /me");
+router.delete("/", requireAuth, async (req, res) => {
+  await deleteUser(req.userId);
+
+  res.status(204).end();
 });
 
-router.post("/phone", (req, res) => {
-  res.send("POST /me/phone");
-});
-
-router.post("/phone/verify", (req, res) => {
-  res.send("POST /me/phone/verify");
-});
+router.post("/welcome", (req, res) => {});
 
 export default router;
