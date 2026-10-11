@@ -18,7 +18,9 @@ export type IconName =
   | "coffee"
   | "shopping"
   | "income"
-  | "food";
+  | "food"
+  | "copy"
+  | "check";
 
 // Properties accepted by the Icon component
 interface IconProps {
@@ -137,6 +139,19 @@ export default function Icon({
       <>
         <path d="M4 3v8m4-8v8M4 7h4M6 11v10" />
         <path d="M17 3c-3 3-3 8 0 10v8" />
+      </>
+    ),
+
+    copy: (
+      <>
+        <rect x="9" y="9" width="12" height="12" rx="2" />
+        <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+      </>
+    ),
+
+    check: (
+      <>
+        <path d="m5 12 5 5 9-10" />
       </>
     ),
   };

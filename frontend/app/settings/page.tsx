@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Card from "@/components/ui/Card";
+import CopyButton from "@/components/ui/CopyButton";
+import PhoneDisplay from "@/components/ui/PhoneDisplay";
 import Skeleton from "@/components/ui/Skeleton";
 import TextField from "@/components/auth/TextField";
 import {
@@ -18,6 +20,7 @@ import {
   type Session,
 } from "@/lib/auth";
 import { clearBankData } from "@/lib/bank-data";
+import { formatPhone } from "@/lib/phone";
 
 type BankItem = {
   id: string;
@@ -93,6 +96,12 @@ function SettingsSections({ session }: { session: Session }) {
   const [profileError, setProfileError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
+  // Agent number, read from the backend so it shows on any device
+  const [agentPhone, setAgentPhone] = useState<string | null>(
+    session.agentPhone
+  );
+  const [agentLoading, setAgentLoading] = useState(true);
+
   // Connected banks
   const [banks, setBanks] = useState<BankItem[]>([]);
   const [banksLoading, setBanksLoading] = useState(true);
@@ -103,6 +112,30 @@ function SettingsSections({ session }: { session: Session }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+
+  // Load the agent's number saved on the user's account.
+  useEffect(() => {
+    async function loadAgentPhone() {
+      try {
+        const response = await authFetch("/api/me", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Unable to load account");
+        }
+
+        const data = await response.json();
+        setAgentPhone(data.user?.agentPhone ?? null);
+      } catch {
+        // Keeps whatever number this device already had.
+      } finally {
+        setAgentLoading(false);
+      }
+    }
+
+    loadAgentPhone();
+  }, []);
 
   // Load the user's connected banks.
   useEffect(() => {
@@ -236,9 +269,7 @@ function SettingsSections({ session }: { session: Session }) {
               Phone number
             </p>
 
-            <p className="rounded-xl bg-surface-blue px-4 py-3 text-sm text-foreground">
-              {session.user.phone}
-            </p>
+            <PhoneDisplay value={session.user.phone} />
 
             <p className="mt-2 text-xs text-muted">
               Your phone number is your login and can&apos;t be
@@ -274,24 +305,41 @@ function SettingsSections({ session }: { session: Session }) {
           Your agent&apos;s number
         </p>
 
-        {session.agentPhone ? (
+        {agentPhone ? (
           <>
-            <a
-              href={`sms:${session.agentPhone}`}
-              className="mt-2 block text-2xl font-bold tracking-tight hover:underline"
-            >
-              {session.agentPhone}
-            </a>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <a
+                href={`sms:${agentPhone}`}
+                className="block w-fit rounded-xl transition hover:opacity-90"
+              >
+                <PhoneDisplay
+                  value={agentPhone}
+                  tone="onPrimary"
+                  size="large"
+                />
+              </a>
 
-            <p className="mt-2 text-sm leading-relaxed text-white/85">
-              Text this number from {session.user.phone} to
+              <CopyButton
+                value={agentPhone}
+                label="Copy agent number"
+              />
+            </div>
+
+            <p className="mt-3 text-sm leading-relaxed text-white/85">
+              Text this number from{" "}
+              {formatPhone(session.user.phone)} to
               reach your finance agent.
             </p>
           </>
+        ) : agentLoading ? (
+          <>
+            <Skeleton className="mt-3 h-8 w-48 !bg-white/20" />
+            <Skeleton className="mt-3 h-4 w-full !bg-white/20" />
+          </>
         ) : (
           <p className="mt-2 text-sm leading-relaxed text-white/85">
-            Your agent&apos;s number is shown when you sign up
-            and isn&apos;t available on this device.
+            Your account doesn&apos;t have an agent number yet.
+            Log out and back in to set one up.
           </p>
         )}
       </div>

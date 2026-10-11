@@ -78,19 +78,3 @@ export async function askGemini(text, parsed = EMPTY_PARSE, offers) {
 
   return interaction.output_text?.trim() || "Sorry, I didn't get a response.";
 }
-
-// Runs the agents in order for one incoming text
-// export async function handleMessage(text) {
-//   let parsed = EMPTY_PARSE;
-
-//   try {
-//     parsed = await parseMessage(text);
-//   } catch (err) {
-//     // Still reply if parsing fails
-//     console.error("Failed to parse message:", err);
-//   }
-
-//   const reply = await askGemini(text, parsed);
-
-//   return { parsed, reply };
-// }

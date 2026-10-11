@@ -23,6 +23,7 @@ model User {
   id String @id @default(uuid()) @db.Char(36)
   name String
   phone String @unique
+  agentPhone String?
   email String?
   passwordHash String
   agentOptOut Boolean @default(false)
@@ -33,6 +34,7 @@ model User {
   agent PhotonLine?
   messages MessageLog[]
 }
+
 
 
 // One row per logged-in device

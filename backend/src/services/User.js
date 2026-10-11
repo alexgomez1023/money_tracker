@@ -9,6 +9,7 @@ const PUBLIC_USER_FIELDS = {
   id: true,
   name: true,
   phone: true,
+  agentPhone: true,
   email: true,
   agentOptOut: true,
   createdAt: true,
