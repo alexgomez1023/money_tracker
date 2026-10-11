@@ -1,6 +1,7 @@
 
 "use client";
 
+import Button from "@/components/ui/Button";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -74,7 +75,7 @@ export default function LoginPage() {
             Money Tracker
           </p>
 
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-primary">
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-primary">
             Welcome back
           </h1>
 
@@ -116,13 +117,14 @@ export default function LoginPage() {
               </p>
             )}
 
-            <button
+            <Button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-60"
+              size="lg"
+              fullWidth
             >
               {submitting ? "Logging in..." : "Log In"}
-            </button>
+            </Button>
           </form>
         </Card>
 

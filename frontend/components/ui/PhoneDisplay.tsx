@@ -17,9 +17,9 @@ export default function PhoneDisplay({
   const parts = splitPhone(value);
 
   const textSize =
-    size === "large" ? "text-xl font-bold" : "text-sm font-semibold";
+    size === "large" ? "text-base font-bold" : "text-sm font-semibold";
 
-  const padding = size === "large" ? "px-3 py-2" : "px-3 py-3";
+  const padding = size === "large" ? "px-2.5 py-2" : "px-3 py-3";
 
   const boxClass =
     tone === "onPrimary"
@@ -30,9 +30,6 @@ export default function PhoneDisplay({
     tone === "onPrimary"
       ? "bg-white/30 text-white"
       : "border border-border-custom bg-surface-blue text-primary";
-
-  const dashClass =
-    tone === "onPrimary" ? "text-white/60" : "text-muted";
 
   // Numbers that aren't +1 don't fit the boxes, so they are shown as plain text.
   if (!parts) {
@@ -47,7 +44,7 @@ export default function PhoneDisplay({
     <span
       role="img"
       aria-label={formatPhone(value)}
-      className={`flex flex-wrap items-center gap-2 ${textSize}`}
+      className={`flex flex-wrap items-center gap-1.5 ${textSize}`}
     >
       <span
         aria-hidden="true"
@@ -60,17 +57,9 @@ export default function PhoneDisplay({
         <span
           key={index}
           aria-hidden="true"
-          className="flex items-center gap-2"
+          className={`rounded-xl ${padding} tracking-widest ${boxClass}`}
         >
-          {index > 0 && (
-            <span className={dashClass}>–</span>
-          )}
-
-          <span
-            className={`rounded-xl ${padding} tracking-widest ${boxClass}`}
-          >
-            {segment}
-          </span>
+          {segment}
         </span>
       ))}
     </span>

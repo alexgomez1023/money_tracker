@@ -11,11 +11,51 @@ type SharedRequest = {
 
 const requests: Record<string, SharedRequest> = {};
 
+// Why bank data could not be loaded. Each one gets its own message and button.
+export type BankErrorReason = "signedOut" | "noBank" | "unavailable";
+
+export class BankDataError extends Error {
+  reason: BankErrorReason;
+
+  constructor(reason: BankErrorReason) {
+    super(`Bank data could not be loaded: ${reason}`);
+
+    this.reason = reason;
+  }
+}
+
+// The backend answers 401 when signed out and 400 when no bank is linked.
+export function getStatusReason(status: number): BankErrorReason {
+  if (status === 401) {
+    return "signedOut";
+  }
+
+  if (status === 400) {
+    return "noBank";
+  }
+
+  return "unavailable";
+}
+
+export function getBankErrorReason(error: unknown): BankErrorReason {
+  if (error instanceof BankDataError) {
+    return error.reason;
+  }
+
+  return "unavailable";
+}
+
 async function fetchJson(url: string) {
-  const response = await authFetch(url, { cache: "no-store" });
+  let response: Response;
+
+  try {
+    response = await authFetch(url, { cache: "no-store" });
+  } catch {
+    throw new BankDataError("unavailable");
+  }
 
   if (!response.ok) {
-    throw new Error(`Request to ${url} failed`);
+    throw new BankDataError(getStatusReason(response.status));
   }
 
   return response.json();

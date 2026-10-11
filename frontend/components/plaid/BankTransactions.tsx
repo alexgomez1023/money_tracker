@@ -1,9 +1,22 @@
 
 "use client";
 
+import Button from "@/components/ui/Button";
 import { useCallback, useEffect, useState } from "react";
-import Skeleton from "@/components/ui/Skeleton";
-import { getTransactions } from "@/lib/bank-data";
+import Link from "next/link";
+import Card from "@/components/ui/Card";
+import Icon from "@/components/ui/Icon";
+import { SkeletonRows } from "@/components/ui/Skeleton";
+import BankErrorNotice from "@/components/ui/BankErrorNotice";
+import {
+  getBankErrorReason,
+  getTransactions,
+  type BankErrorReason,
+} from "@/lib/bank-data";
+import { formatCategory, formatDate, formatMoney } from "@/lib/format";
+
+// How many transactions this preview shows. The full list is on the Transactions page.
+const PREVIEW_COUNT = 8;
 
 type BankTransaction = {
   transaction_id: string;
@@ -22,7 +35,7 @@ type BankTransaction = {
 export default function BankTransactions() {
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<BankErrorReason | "">("");
 
   // Fetch transactions from our Express backend.
   const loadTransactions = useCallback(async (fresh = false) => {
@@ -32,8 +45,8 @@ export default function BankTransactions() {
     try {
       const data = await getTransactions<BankTransaction>(fresh);
       setTransactions(data.transactions ?? []);
-    } catch {
-      setError("Unable to load transactions. Connect a bank first.");
+    } catch (err) {
+      setError(getBankErrorReason(err));
       setTransactions([]);
     } finally {
       setLoading(false);
@@ -44,99 +57,104 @@ export default function BankTransactions() {
     loadTransactions();
   }, [loadTransactions]);
 
-  // Format a transaction amount as US dollars.
-  const formatMoney = (amount: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(Math.abs(amount));
-
   // Turn Plaid category codes into readable labels.
-  const formatCategory = (transaction: BankTransaction) => {
+  const getCategory = (transaction: BankTransaction) => {
     const category = transaction.personal_finance_category?.primary;
 
     if (category) {
-      return category.replaceAll("_", " ").toLowerCase();
+      return formatCategory(category);
     }
 
     return transaction.category?.[0] ?? "Other";
   };
 
   return (
-    <section className="mt-10 space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-bold">Recent Transactions</h2>
+    <section className="mt-8">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-lg font-bold text-primary">
+          Recent transactions
+        </h2>
 
-        <button
-          type="button"
-          onClick={() => loadTransactions(true)}
-          disabled={loading}
-          className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50"
-        >
-          Refresh
-        </button>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/transactions"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-secondary hover:text-primary"
+          >
+            View all
+            <Icon name="arrowRight" size={15} />
+          </Link>
+
+          <Button
+            type="button"
+            onClick={() => loadTransactions(true)}
+            disabled={loading}
+            variant="secondary"
+            size="sm"
+          >
+            Refresh
+          </Button>
+        </div>
       </div>
 
-      {loading && (
-        <div className="space-y-3 rounded-xl border p-4">
-          {Array.from({ length: 5 }, (_, index) => (
-            <Skeleton key={index} className="h-5 w-full" />
-          ))}
-        </div>
-      )}
+      <Card className="!p-0">
+        {loading && <SkeletonRows count={5} />}
 
-      {error && <p className="text-red-600">{error}</p>}
+        {error && (
+          <BankErrorNotice
+            reason={error}
+            onRetry={() => loadTransactions(true)}
+            className="p-5"
+          />
+        )}
 
-      {!loading && !error && transactions.length === 0 && (
-        <p>No transactions found.</p>
-      )}
+        {!loading && !error && transactions.length === 0 && (
+          <p className="p-5 text-sm text-muted">
+            No transactions found.
+          </p>
+        )}
 
-      {!loading && !error && transactions.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b bg-gray-50 text-gray-700">
-              <tr>
-                <th className="px-4 py-3">Merchant</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3 text-right">Amount</th>
-              </tr>
-            </thead>
+        {!loading && !error && transactions.length > 0 && (
+          <div className="divide-y divide-border-custom">
+            {transactions.slice(0, PREVIEW_COUNT).map((transaction) => {
+              // Plaid reports money leaving the account as a positive amount.
+              const isExpense = transaction.amount > 0;
 
-            <tbody>
-              {transactions.map((transaction) => (
-                <tr
+              return (
+                <div
                   key={transaction.transaction_id}
-                  className="border-b last:border-b-0"
+                  className="flex items-center justify-between gap-3 px-5 py-4"
                 >
-                  <td className="px-4 py-3 font-medium">
-                    {transaction.merchant_name || transaction.name}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-blue text-primary">
+                      <Icon name="wallet" size={20} />
+                    </div>
 
-                    {transaction.pending && (
-                      <span className="ml-2 text-xs text-gray-500">
-                        Pending
-                      </span>
-                    )}
-                  </td>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {transaction.merchant_name || transaction.name}
+                      </p>
 
-                  <td className="px-4 py-3 capitalize text-gray-600">
-                    {formatCategory(transaction)}
-                  </td>
+                      <p className="mt-1 text-xs text-muted">
+                        {getCategory(transaction)} · {formatDate(transaction.date)}
+                        {transaction.pending ? " · Pending" : ""}
+                      </p>
+                    </div>
+                  </div>
 
-                  <td className="px-4 py-3 text-gray-600">
-                    {transaction.date}
-                  </td>
-
-                  <td className="px-4 py-3 text-right font-semibold">
-                    {transaction.amount < 0 ? "-" : "+"}
-                    {formatMoney(transaction.amount)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                  <p
+                    className={`shrink-0 text-sm font-semibold ${
+                      isExpense ? "text-foreground" : "text-secondary"
+                    }`}
+                  >
+                    {isExpense ? "-" : "+"}
+                    {formatMoney(Math.abs(transaction.amount))}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
     </section>
   );
 }

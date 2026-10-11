@@ -1,6 +1,8 @@
 
 "use client";
 
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
 import { useEffect, useState } from "react";
 import {
   loadBudgets,
@@ -16,13 +18,20 @@ import {
 } from "@/lib/plaid-spending";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
-import { getTransactions } from "@/lib/bank-data";
+import BankErrorNotice from "@/components/ui/BankErrorNotice";
+import {
+  getBankErrorReason,
+  getTransactions,
+  type BankErrorReason,
+} from "@/lib/bank-data";
+import { formatMoney } from "@/lib/format";
+import { showToast } from "@/lib/toast";
 
 // One color per budget state, the same for every category.
 const STATUS_COLORS = {
-  onTrack: "#0076A8",
-  nearLimit: "#D97706",
-  overBudget: "#D22E3A",
+  onTrack: "var(--secondary)",
+  nearLimit: "var(--warning)",
+  overBudget: "var(--accent)",
 };
 
 export default function BudgetsPage() {
@@ -34,10 +43,11 @@ export default function BudgetsPage() {
 
   // Everything stays a skeleton until both have arrived, so the numbers appear together.
   const loading = transactionsLoading || budgetsLoading;
-  const [error, setError] = useState("");
+  const [error, setError] = useState<BankErrorReason | "">("");
 
   const [editing, setEditing] = useState<string | null>(null);
   const [newLimit, setNewLimit] = useState("");
+  const [limitError, setLimitError] = useState("");
 
   // Load budget limits from the user's account, and again whenever they are saved.
   useEffect(() => {
@@ -59,8 +69,8 @@ export default function BudgetsPage() {
 
         setMonth(getCurrentMonth());
         setTransactions(data.transactions ?? []);
-      } catch {
-        setError("Unable to load Plaid spending. Connect your bank first.");
+      } catch (err) {
+        setError(getBankErrorReason(err));
       } finally {
         setTransactionsLoading(false);
       }
@@ -88,6 +98,7 @@ export default function BudgetsPage() {
   function startEditing(budget: Budget) {
     setEditing(budget.category);
     setNewLimit(budget.limit.toString());
+    setLimitError("");
   }
 
   // Save a new monthly limit.
@@ -95,9 +106,11 @@ export default function BudgetsPage() {
     const value = Number(newLimit);
 
     if (!Number.isFinite(value) || value <= 0) {
-      alert("Please enter a budget greater than $0.");
+      setLimitError("Enter a budget greater than $0.");
       return;
     }
+
+    setLimitError("");
 
     const updated = budgets.map((budget) =>
       budget.category === category
@@ -117,8 +130,11 @@ export default function BudgetsPage() {
     if (!saved) {
       setBudgets(previous);
 
-      alert("Your budget couldn't be saved. Please try again.");
+      showToast("Your budget couldn't be saved. Please try again.", "error");
+      return;
     }
+
+    showToast(`${category} budget saved.`);
   }
 
   const hasOverspending = liveBudgets.some(
@@ -138,7 +154,7 @@ export default function BudgetsPage() {
             Your Finances
           </p>
 
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-primary">
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-primary">
             Monthly Budgets
           </h1>
 
@@ -148,9 +164,7 @@ export default function BudgetsPage() {
         </header>
 
         {error && (
-          <p className="mb-4 text-sm text-accent">
-            {error}
-          </p>
+          <BankErrorNotice reason={error} className="mb-4" />
         )}
 
         {/* Summary Cards */}
@@ -160,11 +174,11 @@ export default function BudgetsPage() {
               Total Budget
             </p>
 
-            <p className="mt-3 text-xl font-bold text-primary sm:text-2xl">
+            <p className="mt-3 font-display text-2xl font-bold tracking-tight text-primary sm:text-3xl">
               {loading ? (
                 <Skeleton className="h-7 w-24" />
               ) : (
-                `$${totalBudget.toFixed(2)}`
+                formatMoney(totalBudget)
               )}
             </p>
           </Card>
@@ -175,7 +189,7 @@ export default function BudgetsPage() {
             </p>
 
             <p
-              className={`mt-3 text-xl font-bold sm:text-2xl ${
+              className={`mt-3 font-display text-2xl font-bold tracking-tight sm:text-3xl ${
                 remaining < 0
                   ? "text-accent"
                   : "text-secondary"
@@ -184,12 +198,9 @@ export default function BudgetsPage() {
               {loading ? (
                 <Skeleton className="h-7 w-24" />
               ) : error ? (
-                "—"
+                "N/A"
               ) : (
-                <>
-                  {remaining < 0 ? "-" : ""}$
-                  {Math.abs(remaining).toFixed(2)}
-                </>
+                formatMoney(remaining)
               )}
             </p>
           </Card>
@@ -198,17 +209,17 @@ export default function BudgetsPage() {
         {/* Overall Progress */}
         <Card>
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-bold text-primary">
+            <h2 className="text-lg font-bold text-primary">
               Overall Spending
             </h2>
 
-            <span className="text-sm font-semibold text-muted">
+            <span className="font-display text-lg font-bold text-primary">
               {loading ? (
-                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-6 w-28" />
               ) : error ? (
-                "—"
+                "N/A"
               ) : (
-                `$${totalSpent.toFixed(2)} spent`
+                `${formatMoney(totalSpent)} spent`
               )}
             </span>
           </div>
@@ -237,7 +248,7 @@ export default function BudgetsPage() {
             {loading ? (
               <Skeleton className="h-3 w-48" />
             ) : error
-              ? "Waiting for Plaid spending data"
+              ? "Waiting for spending data"
               : totalBudget > 0
                 ? `${Math.round(
                     (totalSpent / totalBudget) * 100
@@ -272,29 +283,36 @@ export default function BudgetsPage() {
                 <Card key={budget.category}>
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <h3 className="font-semibold text-foreground">
+                      <h3 className="text-base font-bold text-primary">
                         {budget.category}
                       </h3>
 
-                      <p className="mt-1 text-xs text-muted">
+                      <p className="mt-2 font-display text-2xl font-bold tracking-tight text-foreground">
                         {loading ? (
-                          <Skeleton className="h-3 w-20" />
+                          <Skeleton className="h-7 w-24" />
                         ) : error ? (
-                          "Spending unavailable"
+                          "Unavailable"
                         ) : (
-                          `$${budget.spent.toFixed(2)} spent`
+                          <>
+                            {formatMoney(budget.spent)}
+
+                            <span className="ml-2 font-sans text-xs font-medium tracking-normal text-muted">
+                              spent
+                            </span>
+                          </>
                         )}
                       </p>
                     </div>
 
-                    <button
+                    <Button
                       type="button"
                       onClick={() => startEditing(budget)}
                       disabled={budgetsLoading}
-                      className="rounded-lg border border-border-custom px-3 py-2 text-xs font-semibold text-primary hover:bg-surface-blue disabled:opacity-50"
+                      variant="secondary"
+                      size="sm"
                     >
                       Edit Budget
-                    </button>
+                    </Button>
                   </div>
 
                   <div className="mt-5 flex items-center justify-between text-sm">
@@ -306,7 +324,7 @@ export default function BudgetsPage() {
                       {loading ? (
                         <Skeleton className="h-4 w-16" />
                       ) : (
-                        `$${budget.limit.toFixed(2)}`
+                        formatMoney(budget.limit)
                       )}
                     </span>
                   </div>
@@ -330,7 +348,7 @@ export default function BudgetsPage() {
                       {loading ? (
                         <Skeleton className="h-3 w-14" />
                       ) : error ? (
-                        "—"
+                        "N/A"
                       ) : (
                         `${Math.round(percentage)}% used`
                       )}
@@ -360,7 +378,7 @@ export default function BudgetsPage() {
                         New Monthly Limit ($)
                       </label>
 
-                      <input
+                      <Input
                         id={`budget-${budget.category}`}
                         type="number"
                         min="0.01"
@@ -369,27 +387,32 @@ export default function BudgetsPage() {
                         onChange={(event) =>
                           setNewLimit(event.target.value)
                         }
-                        className="w-full rounded-lg border border-border-custom bg-white px-3 py-3 text-sm text-foreground outline-none focus:border-secondary"
                       />
 
+                      {limitError && (
+                        <p role="alert" className="mt-2 text-sm text-accent">
+                          {limitError}
+                        </p>
+                      )}
+
                       <div className="mt-3 flex gap-2">
-                        <button
+                        <Button
                           type="button"
                           onClick={() =>
                             saveBudget(budget.category)
                           }
-                          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-secondary"
+                          variant="primary"
                         >
                           Save
-                        </button>
+                        </Button>
 
-                        <button
+                        <Button
                           type="button"
                           onClick={() => setEditing(null)}
-                          className="rounded-lg border border-border-custom bg-white px-4 py-2 text-sm font-semibold text-foreground"
+                          variant="secondary"
                         >
                           Cancel
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -402,7 +425,7 @@ export default function BudgetsPage() {
         {/* Financial Insight */}
         <section className="mt-8">
           <div className="rounded-2xl border border-border-custom bg-surface-blue p-5">
-            <p className="text-sm font-bold text-primary">
+            <p className="text-base font-bold text-primary">
               Budget Insight
             </p>
 
@@ -424,7 +447,7 @@ export default function BudgetsPage() {
         </section>
 
         <p className="mt-6 text-center text-xs text-muted">
-          Spending from Plaid Sandbox. Budget limits are saved to your account.
+          Spending comes from your connected bank. Budget limits are saved to your account.
         </p>
       </div>
     </main>

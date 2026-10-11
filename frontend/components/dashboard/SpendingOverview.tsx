@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
+import Icon from "@/components/ui/Icon";
 import {
   initialBudgets,
   loadBudgets,
@@ -11,8 +12,14 @@ import {
   type Budget,
 } from "@/lib/budget-storage";
 import Skeleton from "@/components/ui/Skeleton";
-import { getTransactions } from "@/lib/bank-data";
+import BankErrorNotice from "@/components/ui/BankErrorNotice";
+import {
+  getBankErrorReason,
+  getTransactions,
+  type BankErrorReason,
+} from "@/lib/bank-data";
 import { getCurrentMonth } from "@/lib/plaid-spending";
+import { formatMoney } from "@/lib/format";
 
 type PlaidTransaction = {
   amount: number;
@@ -51,7 +58,7 @@ export default function SpendingOverview() {
 
   // Everything stays a skeleton until both have arrived, so the numbers appear together.
   const loading = transactionsLoading || budgetsLoading;
-  const [error, setError] = useState("");
+  const [error, setError] = useState<BankErrorReason | "">("");
 
   // Load budget limits from the user's account, and again whenever they are saved.
   useEffect(() => {
@@ -72,8 +79,8 @@ export default function SpendingOverview() {
         const data = await getTransactions<PlaidTransaction>();
         setMonth(getCurrentMonth());
         setTransactions(data.transactions ?? []);
-      } catch {
-        setError("Connect a bank to view spending.");
+      } catch (err) {
+        setError(getBankErrorReason(err));
       } finally {
         setTransactionsLoading(false);
       }
@@ -142,25 +149,23 @@ export default function SpendingOverview() {
           </h2>
 
           <p className="mt-1 text-xs text-muted">
-            Monthly breakdown · Plaid Sandbox
+            This month by category
           </p>
         </div>
 
-        <span className="text-lg font-bold text-primary">
+        <span className="font-display text-2xl font-bold tracking-tight text-primary">
           {loading ? (
             <Skeleton className="h-6 w-24" />
           ) : error ? (
-            "—"
+            "N/A"
           ) : (
-            `$${total.toFixed(2)}`
+            formatMoney(total)
           )}
         </span>
       </div>
 
       {error && (
-        <p className="mt-3 text-xs text-accent">
-          {error}
-        </p>
+        <BankErrorNotice reason={error} className="mt-3" />
       )}
 
       <div className="mt-4 rounded-xl bg-surface-blue p-4">
@@ -173,7 +178,7 @@ export default function SpendingOverview() {
             {loading ? (
               <Skeleton className="h-4 w-16 !bg-white" />
             ) : (
-              `$${totalLimit.toFixed(2)}`
+              formatMoney(totalLimit)
             )}
           </span>
         </div>
@@ -191,9 +196,9 @@ export default function SpendingOverview() {
             {loading ? (
               <Skeleton className="h-4 w-16 !bg-white" />
             ) : error ? (
-              "—"
+              "N/A"
             ) : (
-              `${remaining < 0 ? "-" : ""}$${Math.abs(remaining).toFixed(2)}`
+              formatMoney(remaining)
             )}
           </span>
         </div>
@@ -236,7 +241,7 @@ export default function SpendingOverview() {
                   {loading ? (
                     <Skeleton className="mt-1 h-3 w-20" />
                   ) : (
-                    `Limit: $${item.limit.toFixed(2)}`
+                    `Limit: ${formatMoney(item.limit)}`
                   )}
                 </p>
               </div>
@@ -246,9 +251,9 @@ export default function SpendingOverview() {
               {loading ? (
                 <Skeleton className="h-4 w-14" />
               ) : error ? (
-                "—"
+                "N/A"
               ) : (
-                `$${item.spent.toFixed(2)}`
+                formatMoney(item.spent)
               )}
             </span>
           </div>
@@ -257,9 +262,10 @@ export default function SpendingOverview() {
 
       <Link
         href="/budgets"
-        className="mt-5 inline-block text-sm font-semibold text-secondary hover:text-primary"
+        className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary"
       >
-        View and edit budgets →
+        View and edit budgets
+        <Icon name="arrowRight" size={16} />
       </Link>
     </Card>
   );

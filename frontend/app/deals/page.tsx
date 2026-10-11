@@ -1,9 +1,13 @@
-
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Button from "@/components/ui/Button";
+import Chip from "@/components/ui/Chip";
+import Input from "@/components/ui/Input";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
+import { getSavedDealIds, saveSavedDealIds } from "@/lib/deal-storage";
+import { showToast } from "@/lib/toast";
 
 type Offer = {
   id: string;
@@ -13,27 +17,30 @@ type Offer = {
   category: string;
 };
 
-const categoryColors = [
-  "#0076A8",
-  "#24826B",
-  "#D22E3A",
-  "#7554A3",
-];
+const categoryColors = ["#0076A8", "#24826B", "#D22E3A", "#7554A3"];
+
+// How many offers one page shows.
+const PAGE_SIZE = 12;
 
 export default function DealsPage() {
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] =
-    useState("All");
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const [savedDealIds, setSavedDealIds] = useState<string[]>(
-    []
-  );
+  const [savedDealIds, setSavedDealIds] = useState<string[]>([]);
 
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+
+  const [page, setPage] = useState(1);
+
+  // The top of the offer list, scrolled back into view when the page changes.
+  const listRef = useRef<HTMLDivElement>(null);
 
   const [deals, setDeals] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Raised by the Retry button to load the offers again.
+  const [attempt, setAttempt] = useState(0);
 
   // Load offers from our backend.
   useEffect(() => {
@@ -57,16 +64,11 @@ export default function DealsPage() {
     }
 
     loadOffers();
-  }, []);
+  }, [attempt]);
 
   // Create filters from the offer categories.
   const categories = useMemo(() => {
-    return [
-      "All",
-      ...Array.from(
-        new Set(deals.map((deal) => deal.category))
-      ),
-    ];
+    return ["All", ...Array.from(new Set(deals.map((deal) => deal.category)))];
   }, [deals]);
 
   function getColor(category: string) {
@@ -86,68 +88,74 @@ export default function DealsPage() {
         deal.category.toLowerCase().includes(query);
 
       const matchesCategory =
-        selectedCategory === "All" ||
-        deal.category === selectedCategory;
+        selectedCategory === "All" || deal.category === selectedCategory;
 
-      const matchesSaved =
-        !showSavedOnly || savedDealIds.includes(deal.id);
+      const matchesSaved = !showSavedOnly || savedDealIds.includes(deal.id);
 
-      return (
-        matchesSearch &&
-        matchesCategory &&
-        matchesSaved
-      );
+      return matchesSearch && matchesCategory && matchesSaved;
     });
   }, [deals, search, selectedCategory, savedDealIds, showSavedOnly]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredDeals.length / PAGE_SIZE));
+
+  // Removing a saved offer can leave fewer pages than the one being viewed.
+  const currentPage = Math.min(page, totalPages);
+
+  const pageDeals = filteredDeals.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
+
+  function goToPage(nextPage: number) {
+    setPage(nextPage);
+
+    listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  // Saved offers are kept in this browser, so they are still there after a reload.
+  useEffect(() => {
+    function loadSaved() {
+      setSavedDealIds(getSavedDealIds());
+    }
+
+    loadSaved();
+  }, []);
+
   function toggleSaved(dealId: string) {
-    setSavedDealIds((current) =>
-      current.includes(dealId)
-        ? current.filter((id) => id !== dealId)
-        : [...current, dealId]
-    );
+    const updated = savedDealIds.includes(dealId)
+      ? savedDealIds.filter((id) => id !== dealId)
+      : [...savedDealIds, dealId];
+
+    setSavedDealIds(updated);
+
+    saveSavedDealIds(updated);
+
+    showToast(updated.includes(dealId) ? "Offer saved." : "Offer removed.");
   }
 
   function clearFilters() {
     setSearch("");
     setSelectedCategory("All");
     setShowSavedOnly(false);
+    setPage(1);
   }
 
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-5xl px-5 pb-32 pt-8 sm:px-8">
-
         {/* Page Header */}
         <header className="mb-8">
-          <p className="text-sm text-muted">
-            Smart Savings
-          </p>
+          <p className="text-sm text-muted">Smart Savings</p>
 
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-primary">
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-primary">
             Deals & Offers
           </h1>
 
           <p className="mt-2 text-sm text-muted">
-            Discover offers that could help you save.
+            Explore merchant offers, compare potential savings, and bookmark
+            your favorites.
           </p>
         </header>
-
-        {/* Featured Banner */}
-        <div className="mb-6 rounded-2xl bg-primary p-6 text-white">
-          <p className="text-xs font-semibold uppercase tracking-wide text-white/75">
-            Discover Savings
-          </p>
-
-          <h2 className="mt-2 text-xl font-bold">
-            Find savings that fit your life
-          </h2>
-
-          <p className="mt-2 text-sm leading-relaxed text-white/85">
-            Explore merchant offers, compare potential
-            savings, and bookmark your favorites.
-          </p>
-        </div>
 
         {/* Search and Filters */}
         <Card>
@@ -158,78 +166,68 @@ export default function DealsPage() {
             Search Deals
           </label>
 
-          <input
+          <Input
             id="deal-search"
             type="search"
             placeholder="Search merchants or offers..."
             value={search}
-            onChange={(event) =>
-              setSearch(event.target.value)
-            }
-            className="w-full rounded-xl border border-border-custom bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/20"
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
           />
 
           {/* Category Filters */}
           <div className="mt-5 flex flex-wrap gap-2">
             {categories.map((category) => {
-              const active =
-                selectedCategory === category;
+              const active = selectedCategory === category;
 
               return (
-                <button
+                <Chip
                   key={category}
-                  type="button"
-                  onClick={() =>
-                    setSelectedCategory(category)
-                  }
-                  aria-pressed={active}
-                  className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
-                    active
-                      ? "border-primary bg-primary text-white"
-                      : "border-border-custom bg-white text-foreground hover:border-secondary"
-                  }`}
+                  active={active}
+                  onClick={() => {
+                    setSelectedCategory(category);
+                    setPage(1);
+                  }}
                 >
-                  {category.charAt(0).toUpperCase() +
-                    category.slice(1)}
-                </button>
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                </Chip>
               );
             })}
           </div>
         </Card>
 
         {/* All / Saved Tabs */}
-        <div className="mt-8 flex items-center justify-between gap-3">
+        <div
+          ref={listRef}
+          className="mt-8 flex scroll-mt-4 items-center justify-between gap-3"
+        >
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setShowSavedOnly(false)}
+            <Button
+              variant={showSavedOnly ? "soft" : "primary"}
+              onClick={() => {
+                setShowSavedOnly(false);
+                setPage(1);
+              }}
               aria-pressed={!showSavedOnly}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-                !showSavedOnly
-                  ? "bg-primary text-white"
-                  : "bg-surface-blue text-primary"
-              }`}
             >
               All Deals
-            </button>
+            </Button>
 
-            <button
-              type="button"
-              onClick={() => setShowSavedOnly(true)}
+            <Button
+              variant={showSavedOnly ? "primary" : "soft"}
+              onClick={() => {
+                setShowSavedOnly(true);
+                setPage(1);
+              }}
               aria-pressed={showSavedOnly}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-                showSavedOnly
-                  ? "bg-primary text-white"
-                  : "bg-surface-blue text-primary"
-              }`}
             >
               Saved ({savedDealIds.length})
-            </button>
+            </Button>
           </div>
 
-          <p className="text-xs text-muted">
-            {filteredDeals.length} offers
-          </p>
+          <p className="text-xs text-muted">{filteredDeals.length} offers</p>
         </div>
 
         {/* Deals Grid */}
@@ -254,15 +252,28 @@ export default function DealsPage() {
           </div>
         ) : error ? (
           <Card className="mt-5">
-            <p className="py-10 text-center text-sm text-muted">
-              {error}
-            </p>
+            <div className="py-10 text-center">
+              <p className="text-sm text-muted">{error}</p>
+
+              <Button
+                type="button"
+                onClick={() => {
+                  setLoading(true);
+                  setError("");
+                  setAttempt(attempt + 1);
+                }}
+                variant="secondary"
+                size="sm"
+                className="mt-4"
+              >
+                Retry
+              </Button>
+            </div>
           </Card>
         ) : filteredDeals.length > 0 ? (
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            {filteredDeals.map((deal) => {
-              const isSaved =
-                savedDealIds.includes(deal.id);
+            {pageDeals.map((deal) => {
+              const isSaved = savedDealIds.includes(deal.id);
 
               const color = getColor(deal.category);
 
@@ -291,7 +302,7 @@ export default function DealsPage() {
                   </div>
 
                   <p
-                    className="mt-5 text-2xl font-bold"
+                    className="mt-5 font-display text-2xl font-bold tracking-tight"
                     style={{ color }}
                   >
                     {deal.offer}
@@ -302,22 +313,15 @@ export default function DealsPage() {
                   </p>
 
                   <div className="mt-5 border-t border-border-custom pt-4">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        toggleSaved(deal.id)
-                      }
+                    <Button
+                      variant={isSaved ? "primary" : "secondary"}
+                      size="lg"
+                      fullWidth
+                      onClick={() => toggleSaved(deal.id)}
                       aria-pressed={isSaved}
-                      className={`w-full rounded-xl border px-4 py-3 text-sm font-semibold transition ${
-                        isSaved
-                          ? "border-primary bg-primary text-white"
-                          : "border-border-custom bg-white text-primary hover:bg-surface-blue"
-                      }`}
                     >
-                      {isSaved
-                        ? "Saved — Remove Offer"
-                        : "Save Offer"}
-                    </button>
+                      {isSaved ? "Saved - Remove Offer" : "Save Offer"}
+                    </Button>
                   </div>
                 </Card>
               );
@@ -326,9 +330,7 @@ export default function DealsPage() {
         ) : (
           <Card className="mt-5">
             <div className="py-10 text-center">
-              <h3 className="font-bold text-primary">
-                No offers found
-              </h3>
+              <h3 className="font-bold text-primary">No offers found</h3>
 
               <p className="mt-2 text-sm text-muted">
                 Try another search, category, or view.
@@ -345,10 +347,40 @@ export default function DealsPage() {
           </Card>
         )}
 
+        {/* Pages */}
+        {!loading && !error && totalPages > 1 && (
+          <nav
+            aria-label="Offer pages"
+            className="mt-6 flex items-center justify-between gap-3"
+          >
+            <Button
+              type="button"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              variant="secondary"
+            >
+              Previous
+            </Button>
+
+            <p className="text-xs text-muted">
+              Page {currentPage} of {totalPages}
+            </p>
+
+            <Button
+              type="button"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              variant="secondary"
+            >
+              Next
+            </Button>
+          </nav>
+        )}
+
         {/* Source Notice */}
         <p className="mt-8 text-center text-xs leading-relaxed text-muted">
-          Student offers sourced from studentoffers.co.
-          Availability and terms are set by each merchant.
+          Student offers sourced from studentoffers.co. Availability and terms
+          are set by each merchant.
         </p>
       </div>
     </main>

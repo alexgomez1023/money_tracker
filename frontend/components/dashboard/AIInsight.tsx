@@ -4,11 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/ui/Icon";
 import Skeleton from "@/components/ui/Skeleton";
+import BankErrorNotice from "@/components/ui/BankErrorNotice";
 import { authFetch } from "@/lib/auth";
+import { getStatusReason, type BankErrorReason } from "@/lib/bank-data";
 
 export default function AIInsight() {
   const [insight, setInsight] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<BankErrorReason | "">("");
 
   useEffect(() => {
     async function loadInsight() {
@@ -16,13 +19,14 @@ export default function AIInsight() {
         const response = await authFetch("/api/insights");
 
         if (!response.ok) {
-          throw new Error("Failed to load insights");
+          setError(getStatusReason(response.status));
+          return;
         }
 
         const data = await response.json();
         setInsight(data.insight);
       } catch {
-        setInsight("Connect your bank to see personalized spending insights.");
+        setError("unavailable");
       } finally {
         setLoading(false);
       }
@@ -32,7 +36,7 @@ export default function AIInsight() {
   }, []);
 
   return (
-    <section className="rounded-2xl border border-[#D6E9F5] bg-surface-blue p-5">
+    <section className="rounded-2xl border border-border-custom bg-surface-blue p-5">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-secondary">
           <Icon name="sparkles" size={21} />
@@ -42,7 +46,7 @@ export default function AIInsight() {
           <p className="text-xs font-semibold uppercase tracking-wider text-secondary">
             Smart Insights
           </p>
-          <h2 className="text-base font-bold text-primary">
+          <h2 className="text-lg font-bold text-primary">
             Your AI Financial Assistant
           </h2>
         </div>
@@ -53,6 +57,8 @@ export default function AIInsight() {
           <Skeleton className="h-4 w-full !bg-white" />
           <Skeleton className="mt-2 h-4 w-2/3 !bg-white" />
         </div>
+      ) : error ? (
+        <BankErrorNotice reason={error} className="mt-4" />
       ) : (
         <p className="mt-4 text-sm leading-6 text-foreground">{insight}</p>
       )}

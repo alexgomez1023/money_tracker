@@ -1,11 +1,18 @@
-
 "use client";
 
+import Chip from "@/components/ui/Chip";
+import Input from "@/components/ui/Input";
 import { useEffect, useMemo, useState } from "react";
 import Icon from "@/components/ui/Icon";
 import Card from "@/components/ui/Card";
 import { SkeletonRows } from "@/components/ui/Skeleton";
-import { getTransactions } from "@/lib/bank-data";
+import BankErrorNotice from "@/components/ui/BankErrorNotice";
+import {
+  getBankErrorReason,
+  getTransactions,
+  type BankErrorReason,
+} from "@/lib/bank-data";
+import { formatCategory, formatDay, formatMoney } from "@/lib/format";
 
 type PlaidTransaction = {
   transaction_id: string;
@@ -20,20 +27,13 @@ type PlaidTransaction = {
   category: string[] | null;
 };
 
-const excludedCategories = [
-  "TRANSFER_IN",
-  "TRANSFER_OUT",
-  "LOAN_PAYMENTS",
-];
+const excludedCategories = ["TRANSFER_IN", "TRANSFER_OUT", "LOAN_PAYMENTS"];
 
 function getCategory(transaction: PlaidTransaction) {
   const primary = transaction.personal_finance_category?.primary;
 
   if (primary) {
-    return primary
-      .split("_")
-      .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
-      .join(" ");
+    return formatCategory(primary);
   }
 
   return transaction.category?.[0] ?? "Other";
@@ -44,7 +44,7 @@ export default function TransactionsPage() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<BankErrorReason | "">("");
 
   // Load transactions from Plaid.
   useEffect(() => {
@@ -52,8 +52,8 @@ export default function TransactionsPage() {
       try {
         const data = await getTransactions<PlaidTransaction>();
         setTransactions(data.transactions ?? []);
-      } catch {
-        setError("Unable to load transactions. Connect a bank first.");
+      } catch (err) {
+        setError(getBankErrorReason(err));
       } finally {
         setLoading(false);
       }
@@ -64,18 +64,14 @@ export default function TransactionsPage() {
 
   // Create filters from Plaid categories.
   const categories = useMemo(
-    () => [
-      "All",
-      ...Array.from(new Set(transactions.map(getCategory))).sort(),
-    ],
-    [transactions]
+    () => ["All", ...Array.from(new Set(transactions.map(getCategory))).sort()],
+    [transactions],
   );
 
   // Filter by merchant and category.
   const filteredTransactions = useMemo(() => {
     return transactions.filter((transaction) => {
-      const name =
-        transaction.merchant_name || transaction.name;
+      const name = transaction.merchant_name || transaction.name;
 
       const category = getCategory(transaction);
 
@@ -84,12 +80,29 @@ export default function TransactionsPage() {
         category.toLowerCase().includes(search.toLowerCase());
 
       const matchesCategory =
-        selectedCategory === "All" ||
-        category === selectedCategory;
+        selectedCategory === "All" || category === selectedCategory;
 
       return matchesSearch && matchesCategory;
     });
   }, [transactions, search, selectedCategory]);
+
+  // Group the filtered list by day. It arrives newest first, so each day's rows are already together.
+  const days = useMemo(() => {
+    const groups: { date: string; transactions: PlaidTransaction[] }[] = [];
+
+    for (const transaction of filteredTransactions) {
+      const last = groups[groups.length - 1];
+
+      if (last && last.date === transaction.date) {
+        last.transactions.push(transaction);
+        continue;
+      }
+
+      groups.push({ date: transaction.date, transactions: [transaction] });
+    }
+
+    return groups;
+  }, [filteredTransactions]);
 
   // Calculate totals without counting transfers as spending.
   const { totalIncome, totalExpenses } = useMemo(() => {
@@ -99,8 +112,7 @@ export default function TransactionsPage() {
     for (const transaction of transactions) {
       if (transaction.pending) continue;
 
-      const category =
-        transaction.personal_finance_category?.primary ?? "";
+      const category = transaction.personal_finance_category?.primary ?? "";
 
       if (excludedCategories.includes(category)) continue;
 
@@ -122,11 +134,9 @@ export default function TransactionsPage() {
       <div className="mx-auto max-w-5xl px-5 pb-32 pt-8 sm:px-8">
         {/* Page header */}
         <header className="mb-8">
-          <p className="text-sm text-muted">
-            Financial Activity
-          </p>
+          <p className="text-sm text-muted">Financial Activity</p>
 
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-primary">
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-primary">
             Transactions
           </h1>
 
@@ -138,35 +148,27 @@ export default function TransactionsPage() {
         {/* Summary cards */}
         <div className="mb-8 grid grid-cols-2 gap-4">
           <Card>
-            <p className="text-xs font-medium text-muted">
-              Total Income
-            </p>
+            <p className="text-xs font-medium text-muted">Total Income</p>
 
-            <p className="mt-3 text-xl font-bold text-secondary sm:text-2xl">
-              +${totalIncome.toFixed(2)}
+            <p className="mt-3 font-display text-2xl font-bold tracking-tight text-secondary sm:text-3xl">
+              +{formatMoney(totalIncome)}
             </p>
           </Card>
 
           <Card>
-            <p className="text-xs font-medium text-muted">
-              Total Expenses
-            </p>
+            <p className="text-xs font-medium text-muted">Total Expenses</p>
 
-            <p className="mt-3 text-xl font-bold text-primary sm:text-2xl">
-              -${totalExpenses.toFixed(2)}
+            <p className="mt-3 font-display text-2xl font-bold tracking-tight text-primary sm:text-3xl">
+              -{formatMoney(totalExpenses)}
             </p>
           </Card>
         </div>
 
         {/* Search and filters */}
         <Card>
-          <h2 className="text-lg font-bold text-primary">
-            Activity — Search: {search || "empty"} — Category: {selectedCategory}
-          </h2>
+          <h2 className="text-lg font-bold text-primary">Search and filter</h2>
 
-          <p className="mt-1 text-sm text-muted">
-            Search by merchant or category.
-          </p>
+          <p className="mt-1 text-sm text-muted">Search by brand or category</p>
 
           <div className="mt-5">
             <label
@@ -176,13 +178,12 @@ export default function TransactionsPage() {
               Search transactions
             </label>
 
-            <input
+            <Input
               id="transaction-search"
               type="search"
               placeholder="Search transactions..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="w-full rounded-xl border border-border-custom bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/20"
             />
           </div>
 
@@ -192,19 +193,13 @@ export default function TransactionsPage() {
               const active = selectedCategory === category;
 
               return (
-                <button
+                <Chip
                   key={category}
-                  type="button"
+                  active={active}
                   onClick={() => setSelectedCategory(category)}
-                  aria-pressed={active}
-                  className={`rounded-full border px-4 py-2 text-xs font-semibold transition-colors ${
-                    active
-                      ? "border-primary bg-primary text-white"
-                      : "border-border-custom bg-white text-foreground hover:border-secondary"
-                  }`}
                 >
                   {category}
-                </button>
+                </Chip>
               );
             })}
           </div>
@@ -213,62 +208,74 @@ export default function TransactionsPage() {
         {/* Transaction results */}
         <section className="mt-8">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-primary">
-              Activity
-            </h2>
+            <h2 className="text-lg font-bold text-primary">Activity</h2>
 
             <span className="text-xs text-muted">
               {filteredTransactions.length} transactions
             </span>
           </div>
 
-          <Card className="!p-0">
+          <Card className="overflow-hidden !p-0">
             {loading ? (
               <SkeletonRows count={6} />
             ) : error ? (
-              <p className="p-5 text-sm text-muted">
-                {error}
-              </p>
-            ) : filteredTransactions.length > 0 ? (
+              <BankErrorNotice reason={error} className="p-5" />
+            ) : days.length > 0 ? (
               <div className="divide-y divide-border-custom">
-                {filteredTransactions.map((transaction) => {
-                  const isExpense = transaction.amount > 0;
+                {days.map((day) => (
+                  <section key={day.date}>
+                    <h3 className="border-b border-border-custom bg-background px-5 py-2 text-xs font-semibold text-muted">
+                      {formatDay(day.date)}
+                    </h3>
 
-                  return (
-                    <div
-                      key={transaction.transaction_id}
-                      className="flex items-center justify-between gap-3 px-5 py-4"
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-blue text-primary">
-                          <Icon name="wallet" size={20} />
-                        </div>
+                    <div className="divide-y divide-border-custom">
+                      {day.transactions.map((transaction) => {
+                        const isExpense = transaction.amount > 0;
 
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-foreground">
-                            {transaction.merchant_name || transaction.name}
-                          </p>
+                        return (
+                          <div
+                            key={transaction.transaction_id}
+                            className="flex items-center justify-between gap-3 px-5 py-4"
+                          >
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-blue text-primary">
+                                <Icon name="wallet" size={20} />
+                              </div>
 
-                          <p className="mt-1 text-xs text-muted">
-                            {getCategory(transaction)} · {transaction.date}
-                            {transaction.pending ? " · Pending" : ""}
-                          </p>
-                        </div>
-                      </div>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-foreground">
+                                  {transaction.merchant_name ||
+                                    transaction.name}
+                                </p>
 
-                      <p
-                        className={`shrink-0 text-sm font-semibold ${
-                          isExpense
-                            ? "text-foreground"
-                            : "text-secondary"
-                        }`}
-                      >
-                        {isExpense ? "-" : "+"}$
-                        {Math.abs(transaction.amount).toFixed(2)}
-                      </p>
+                                <p className="mt-1 text-xs text-muted">
+                                  {getCategory(transaction)}
+
+                                  {transaction.pending && (
+                                    <span className="ml-2 rounded-full bg-surface-blue px-2 py-0.5 text-[11px] font-semibold text-primary">
+                                      Pending
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+
+                            <p
+                              className={`shrink-0 text-sm font-semibold ${
+                                isExpense
+                                  ? "text-foreground"
+                                  : "text-secondary"
+                              }`}
+                            >
+                              {isExpense ? "-" : "+"}
+                              {formatMoney(Math.abs(transaction.amount))}
+                            </p>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  </section>
+                ))}
               </div>
             ) : (
               <div className="px-5 py-12 text-center">
@@ -296,7 +303,7 @@ export default function TransactionsPage() {
         </section>
 
         <p className="mt-6 text-center text-xs text-muted">
-          Plaid Sandbox transactions · Last 30 days, up to 100 transactions
+          Last 30 days, up to 100 transactions
         </p>
       </div>
     </main>

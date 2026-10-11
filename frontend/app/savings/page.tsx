@@ -1,6 +1,8 @@
 
 "use client";
 
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
 import { useEffect, useState } from "react";
 import Card from "@/components/ui/Card";
 import {
@@ -12,12 +14,18 @@ import {
   type SavingsGoal,
 } from "@/lib/plaid-savings";
 import Skeleton from "@/components/ui/Skeleton";
+import { showToast } from "@/lib/toast";
+import BankErrorNotice from "@/components/ui/BankErrorNotice";
+import {
+  getBankErrorReason,
+  type BankErrorReason,
+} from "@/lib/bank-data";
 
 export default function SavingsPage() {
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<BankErrorReason | "">("");
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newGoalName, setNewGoalName] = useState("");
@@ -30,6 +38,14 @@ export default function SavingsPage() {
   const [allocatingGoal, setAllocatingGoal] = useState<number | null>(null);
   const [allocationAmount, setAllocationAmount] = useState("");
 
+  // Inline messages shown next to the form they belong to.
+  const [createError, setCreateError] = useState("");
+  const [editError, setEditError] = useState("");
+  const [allocationError, setAllocationError] = useState("");
+
+  // The goal waiting for its delete to be confirmed.
+  const [deletingGoal, setDeletingGoal] = useState<number | null>(null);
+
   // Load saved goals and the connected savings balance.
   useEffect(() => {
     setGoals(getSavingsGoals());
@@ -38,8 +54,8 @@ export default function SavingsPage() {
       try {
         const amount = await fetchSavingsBalance();
         setBalance(amount);
-      } catch {
-        setError("Unable to load savings balance. Connect your bank first.");
+      } catch (err) {
+        setError(getBankErrorReason(err));
       } finally {
         setLoading(false);
       }
@@ -70,14 +86,16 @@ export default function SavingsPage() {
     const target = Number(newGoalTarget);
 
     if (!newGoalName.trim()) {
-      alert("Please enter a goal name.");
+      setCreateError("Enter a goal name.");
       return;
     }
 
     if (!Number.isFinite(target) || target <= 0) {
-      alert("Please enter a target greater than $0.");
+      setCreateError("Enter a target greater than $0.");
       return;
     }
+
+    setCreateError("");
 
     const newGoal: SavingsGoal = {
       id: Date.now(),
@@ -90,6 +108,8 @@ export default function SavingsPage() {
     setNewGoalName("");
     setNewGoalTarget("");
     setShowCreateForm(false);
+
+    showToast("Goal created.");
   }
 
   function startEditing(goal: SavingsGoal) {
@@ -97,18 +117,20 @@ export default function SavingsPage() {
     setEditName(goal.name);
     setEditTarget(goal.target.toString());
     setAllocatingGoal(null);
+    setDeletingGoal(null);
+    setEditError("");
   }
 
   function saveEditedGoal(id: number) {
     const target = Number(editTarget);
 
     if (!editName.trim()) {
-      alert("Please enter a goal name.");
+      setEditError("Enter a goal name.");
       return;
     }
 
     if (!Number.isFinite(target) || target <= 0) {
-      alert("Please enter a target greater than $0.");
+      setEditError("Enter a target greater than $0.");
       return;
     }
 
@@ -121,6 +143,9 @@ export default function SavingsPage() {
     );
 
     setEditingGoal(null);
+    setEditError("");
+
+    showToast("Goal saved.");
   }
 
   // Allocate existing savings without moving money.
@@ -133,7 +158,7 @@ export default function SavingsPage() {
     if (!goal) return;
 
     if (!Number.isFinite(amount) || amount < 0) {
-      alert("Please enter a valid allocation.");
+      setAllocationError("Enter an amount of $0 or more.");
       return;
     }
 
@@ -143,7 +168,7 @@ export default function SavingsPage() {
     );
 
     if (amount > maximum) {
-      alert(
+      setAllocationError(
         `You can allocate up to ${formatMoney(maximum)} to this goal.`
       );
       return;
@@ -159,14 +184,18 @@ export default function SavingsPage() {
 
     setAllocatingGoal(null);
     setAllocationAmount("");
+    setAllocationError("");
+
+    showToast("Allocation saved.");
   }
 
   function deleteGoal(id: number) {
-    if (!window.confirm("Delete this savings goal?")) return;
-
     updateGoals(goals.filter((goal) => goal.id !== id));
     setEditingGoal(null);
     setAllocatingGoal(null);
+    setDeletingGoal(null);
+
+    showToast("Goal deleted.");
   }
 
   return (
@@ -178,7 +207,7 @@ export default function SavingsPage() {
             Your Financial Future
           </p>
 
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-primary">
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-primary">
             Savings Goals
           </h1>
 
@@ -188,7 +217,7 @@ export default function SavingsPage() {
         </header>
 
         {error && (
-          <p className="mb-5 text-sm text-accent">{error}</p>
+          <BankErrorNotice reason={error} className="mb-5" />
         )}
 
         {/* Savings Summary */}
@@ -198,11 +227,11 @@ export default function SavingsPage() {
               Connected Savings
             </p>
 
-            <p className="mt-3 text-xl font-bold text-primary sm:text-2xl">
+            <p className="mt-3 font-display text-2xl font-bold tracking-tight text-primary sm:text-3xl">
               {loading ? (
                 <Skeleton className="h-7 w-28" />
               ) : error ? (
-                "—"
+                "N/A"
               ) : (
                 formatMoney(balance)
               )}
@@ -214,11 +243,11 @@ export default function SavingsPage() {
               Available to Allocate
             </p>
 
-            <p className="mt-3 text-xl font-bold text-secondary sm:text-2xl">
+            <p className="mt-3 font-display text-2xl font-bold tracking-tight text-secondary sm:text-3xl">
               {loading ? (
                 <Skeleton className="h-7 w-28" />
               ) : error ? (
-                "—"
+                "N/A"
               ) : (
                 formatMoney(available)
               )}
@@ -229,7 +258,7 @@ export default function SavingsPage() {
         {/* Overall Progress */}
         <Card className="mb-6">
           <div className="flex items-center justify-between">
-            <h2 className="font-bold text-primary">
+            <h2 className="text-lg font-bold text-primary">
               Overall Goal Progress
             </h2>
 
@@ -237,7 +266,7 @@ export default function SavingsPage() {
               {loading ? (
                 <Skeleton className="h-4 w-10" />
               ) : error ? (
-                "—"
+                "N/A"
               ) : (
                 `${Math.round(overallProgress)}%`
               )}
@@ -263,15 +292,17 @@ export default function SavingsPage() {
         </Card>
 
         {/* Create Goal */}
-        <button
+        <Button
           type="button"
           onClick={() => setShowCreateForm(!showCreateForm)}
-          className="mb-6 w-full rounded-xl bg-primary px-5 py-4 text-sm font-semibold text-white transition hover:bg-secondary"
+          size="lg"
+          fullWidth
+          className="mb-6"
         >
           {showCreateForm
             ? "Cancel New Goal"
             : "+ Create New Savings Goal"}
-        </button>
+        </Button>
 
         {showCreateForm && (
           <Card className="mb-6">
@@ -288,7 +319,7 @@ export default function SavingsPage() {
                   Goal Name
                 </label>
 
-                <input
+                <Input
                   id="goal-name"
                   type="text"
                   placeholder="e.g. Summer Vacation"
@@ -296,7 +327,6 @@ export default function SavingsPage() {
                   onChange={(event) =>
                     setNewGoalName(event.target.value)
                   }
-                  className="w-full rounded-xl border border-border-custom bg-white px-4 py-3 text-sm outline-none focus:border-secondary"
                 />
               </div>
 
@@ -308,7 +338,7 @@ export default function SavingsPage() {
                   Target Amount ($)
                 </label>
 
-                <input
+                <Input
                   id="goal-target"
                   type="number"
                   min="0.01"
@@ -318,17 +348,23 @@ export default function SavingsPage() {
                   onChange={(event) =>
                     setNewGoalTarget(event.target.value)
                   }
-                  className="w-full rounded-xl border border-border-custom bg-white px-4 py-3 text-sm outline-none focus:border-secondary"
                 />
               </div>
 
-              <button
+              {createError && (
+                <p role="alert" className="text-sm text-accent">
+                  {createError}
+                </p>
+              )}
+
+              <Button
                 type="button"
                 onClick={createGoal}
-                className="w-full rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-white hover:bg-primary"
+                size="lg"
+                fullWidth
               >
                 Save Goal
-              </button>
+              </Button>
             </div>
           </Card>
         )}
@@ -373,21 +409,27 @@ export default function SavingsPage() {
                       </div>
 
                       <div className="flex gap-2">
-                        <button
+                        <Button
                           type="button"
                           onClick={() => startEditing(goal)}
-                          className="rounded-lg border border-border-custom px-3 py-2 text-xs font-semibold text-primary hover:bg-surface-blue"
+                          variant="secondary"
+                          size="sm"
                         >
                           Edit
-                        </button>
+                        </Button>
 
-                        <button
+                        <Button
                           type="button"
-                          onClick={() => deleteGoal(goal.id)}
-                          className="rounded-lg border border-border-custom px-3 py-2 text-xs font-semibold text-accent"
+                          onClick={() => {
+                            setDeletingGoal(goal.id);
+                            setEditingGoal(null);
+                            setAllocatingGoal(null);
+                          }}
+                          variant="dangerOutline"
+                          size="sm"
                         >
                           Delete
-                        </button>
+                        </Button>
                       </div>
                     </div>
 
@@ -402,8 +444,8 @@ export default function SavingsPage() {
                       />
                     </div>
 
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-foreground">
+                    <div className="mt-4 flex items-end justify-between gap-3">
+                      <p className="font-display text-2xl font-bold tracking-tight text-foreground">
                         {formatMoney(goal.allocated)}
                       </p>
 
@@ -413,7 +455,7 @@ export default function SavingsPage() {
                     </div>
 
                     {/* Allocation Control */}
-                    <button
+                    <Button
                       type="button"
                       disabled={loading || !!error}
                       onClick={() => {
@@ -426,11 +468,16 @@ export default function SavingsPage() {
                           goal.allocated.toString()
                         );
                         setEditingGoal(null);
+                        setDeletingGoal(null);
+                        setAllocationError("");
                       }}
-                      className="mt-5 w-full rounded-xl bg-surface-blue px-4 py-3 text-sm font-semibold text-primary hover:bg-border-custom disabled:opacity-50"
+                      variant="soft"
+                      size="lg"
+                      fullWidth
+                      className="mt-5"
                     >
                       Allocate Savings
-                    </button>
+                    </Button>
 
                     {allocatingGoal === goal.id && (
                       <div className="mt-4 rounded-xl border border-border-custom p-4">
@@ -441,7 +488,7 @@ export default function SavingsPage() {
                           Total Amount Allocated ($)
                         </label>
 
-                        <input
+                        <Input
                           id={`allocate-${goal.id}`}
                           type="number"
                           min="0"
@@ -450,29 +497,34 @@ export default function SavingsPage() {
                           onChange={(event) =>
                             setAllocationAmount(event.target.value)
                           }
-                          className="w-full rounded-lg border border-border-custom bg-white px-3 py-3 text-sm outline-none focus:border-secondary"
                         />
+
+                        {allocationError && (
+                          <p role="alert" className="mt-2 text-sm text-accent">
+                            {allocationError}
+                          </p>
+                        )}
 
                         <p className="mt-2 text-xs text-muted">
                           Allocation only. No money is transferred.
                         </p>
 
                         <div className="mt-3 flex gap-2">
-                          <button
+                          <Button
                             type="button"
                             onClick={() => allocateMoney(goal.id)}
-                            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white"
+                            variant="primary"
                           >
                             Save Allocation
-                          </button>
+                          </Button>
 
-                          <button
+                          <Button
                             type="button"
                             onClick={() => setAllocatingGoal(null)}
-                            className="rounded-lg border border-border-custom px-4 py-2 text-sm"
+                            variant="secondary"
                           >
                             Cancel
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     )}
@@ -488,14 +540,13 @@ export default function SavingsPage() {
                             Goal Name
                           </label>
 
-                          <input
+                          <Input
                             id={`edit-name-${goal.id}`}
                             type="text"
                             value={editName}
                             onChange={(event) =>
                               setEditName(event.target.value)
                             }
-                            className="w-full rounded-lg border border-border-custom bg-white px-3 py-3 text-sm"
                           />
                         </div>
 
@@ -507,7 +558,7 @@ export default function SavingsPage() {
                             Target Amount ($)
                           </label>
 
-                          <input
+                          <Input
                             id={`edit-target-${goal.id}`}
                             type="number"
                             min="0.01"
@@ -516,26 +567,58 @@ export default function SavingsPage() {
                             onChange={(event) =>
                               setEditTarget(event.target.value)
                             }
-                            className="w-full rounded-lg border border-border-custom bg-white px-3 py-3 text-sm"
                           />
                         </div>
 
+                        {editError && (
+                          <p role="alert" className="text-sm text-accent">
+                            {editError}
+                          </p>
+                        )}
+
                         <div className="flex gap-2">
-                          <button
+                          <Button
                             type="button"
                             onClick={() => saveEditedGoal(goal.id)}
-                            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white"
+                            variant="primary"
                           >
                             Save Changes
-                          </button>
+                          </Button>
 
-                          <button
+                          <Button
                             type="button"
                             onClick={() => setEditingGoal(null)}
-                            className="rounded-lg border border-border-custom bg-white px-4 py-2 text-sm"
+                            variant="secondary"
                           >
                             Cancel
-                          </button>
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Delete Confirmation */}
+                    {deletingGoal === goal.id && (
+                      <div className="mt-4 rounded-xl border border-border-custom p-4">
+                        <p className="text-sm text-foreground">
+                          Delete this savings goal?
+                        </p>
+
+                        <div className="mt-3 flex gap-2">
+                          <Button
+                            type="button"
+                            onClick={() => setDeletingGoal(null)}
+                            variant="secondary"
+                          >
+                            Cancel
+                          </Button>
+
+                          <Button
+                            type="button"
+                            onClick={() => deleteGoal(goal.id)}
+                            variant="danger"
+                          >
+                            Yes, Delete
+                          </Button>
                         </div>
                       </div>
                     )}
@@ -548,7 +631,7 @@ export default function SavingsPage() {
 
         {/* Savings Insight */}
         <div className="mt-8 rounded-2xl border border-border-custom bg-surface-blue p-5">
-          <h2 className="text-sm font-bold text-primary">
+          <h2 className="text-base font-bold text-primary">
             Savings Insight
           </h2>
 
@@ -569,7 +652,7 @@ export default function SavingsPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted">
-          Balances from Plaid Sandbox. Goal allocations are saved in this browser.
+          Balances come from your connected bank. Goal allocations are saved in this browser.
           No money is transferred.
         </p>
       </div>
