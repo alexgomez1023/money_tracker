@@ -4,6 +4,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
+import CopyButton from "@/components/ui/CopyButton";
+import PhoneDisplay from "@/components/ui/PhoneDisplay";
 import PhoneField, {
   getPhoneError,
 } from "@/components/auth/PhoneField";
@@ -14,6 +16,7 @@ import {
   type FieldErrors,
   type Session,
 } from "@/lib/auth";
+import { formatPhone } from "@/lib/phone";
 
 export default function SignupPage() {
   const [name, setName] = useState("");
@@ -99,15 +102,27 @@ export default function SignupPage() {
 
             {session.agentPhone ? (
               <>
-                <a
-                  href={`sms:${session.agentPhone}`}
-                  className="mt-2 block text-2xl font-bold tracking-tight hover:underline"
-                >
-                  {session.agentPhone}
-                </a>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <a
+                    href={`sms:${session.agentPhone}`}
+                    className="block w-fit rounded-xl transition hover:opacity-90"
+                  >
+                    <PhoneDisplay
+                      value={session.agentPhone}
+                      tone="onPrimary"
+                      size="large"
+                    />
+                  </a>
 
-                <p className="mt-2 text-sm leading-relaxed text-white/85">
-                  Text this number from {session.user.phone} to ask
+                  <CopyButton
+                    value={session.agentPhone}
+                    label="Copy agent number"
+                  />
+                </div>
+
+                <p className="mt-3 text-sm leading-relaxed text-white/85">
+                  Text this number from{" "}
+                  {formatPhone(session.user.phone)} to ask
                   about your spending or find student discounts.
                 </p>
               </>

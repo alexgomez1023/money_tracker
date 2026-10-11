@@ -5,8 +5,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import {
-  getBudgets,
   initialBudgets,
+  loadBudgets,
+  onBudgetsUpdated,
   type Budget,
 } from "@/lib/budget-storage";
 import Skeleton from "@/components/ui/Skeleton";
@@ -45,26 +46,23 @@ export default function SpendingOverview() {
   const [budgets, setBudgets] = useState<Budget[]>(initialBudgets);
   const [transactions, setTransactions] = useState<PlaidTransaction[]>([]);
   const [month, setMonth] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [transactionsLoading, setTransactionsLoading] = useState(true);
+  const [budgetsLoading, setBudgetsLoading] = useState(true);
+
+  // Everything stays a skeleton until both have arrived, so the numbers appear together.
+  const loading = transactionsLoading || budgetsLoading;
   const [error, setError] = useState("");
 
-  // Keep editable budget limits synchronized.
+  // Load budget limits from the user's account, and again whenever they are saved.
   useEffect(() => {
-    function refresh() {
-      setBudgets(getBudgets());
+    async function refresh() {
+      setBudgets(await loadBudgets());
+      setBudgetsLoading(false);
     }
 
     refresh();
 
-    window.addEventListener("storage", refresh);
-    window.addEventListener("budgets-updated", refresh);
-    window.addEventListener("pageshow", refresh);
-
-    return () => {
-      window.removeEventListener("storage", refresh);
-      window.removeEventListener("budgets-updated", refresh);
-      window.removeEventListener("pageshow", refresh);
-    };
+    return onBudgetsUpdated(refresh);
   }, []);
 
   // Load Plaid transactions.
@@ -77,7 +75,7 @@ export default function SpendingOverview() {
       } catch {
         setError("Connect a bank to view spending.");
       } finally {
-        setLoading(false);
+        setTransactionsLoading(false);
       }
     }
 
@@ -172,7 +170,11 @@ export default function SpendingOverview() {
           </span>
 
           <span className="font-semibold text-primary">
-            ${totalLimit.toFixed(2)}
+            {loading ? (
+              <Skeleton className="h-4 w-16 !bg-white" />
+            ) : (
+              `$${totalLimit.toFixed(2)}`
+            )}
           </span>
         </div>
 
@@ -231,7 +233,11 @@ export default function SpendingOverview() {
                 </p>
 
                 <p className="text-xs text-muted">
-                  Limit: ${item.limit.toFixed(2)}
+                  {loading ? (
+                    <Skeleton className="mt-1 h-3 w-20" />
+                  ) : (
+                    `Limit: $${item.limit.toFixed(2)}`
+                  )}
                 </p>
               </div>
             </div>

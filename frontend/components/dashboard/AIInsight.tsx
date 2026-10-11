@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/ui/Icon";
+import Skeleton from "@/components/ui/Skeleton";
 
 export default function AIInsight() {
   const [insight, setInsight] = useState("");
@@ -20,9 +21,7 @@ export default function AIInsight() {
         const data = await response.json();
         setInsight(data.insight);
       } catch {
-        setInsight(
-          "Connect your bank to see personalized spending insights."
-        );
+        setInsight("Connect your bank to see personalized spending insights.");
       } finally {
         setLoading(false);
       }
@@ -48,11 +47,14 @@ export default function AIInsight() {
         </div>
       </div>
 
-      <p className="mt-4 text-sm leading-6 text-foreground">
-        {loading
-          ? "Analyzing your recent spending..."
-          : insight}
-      </p>
+      {loading ? (
+        <div className="mt-4" aria-label="Analyzing your recent spending">
+          <Skeleton className="h-4 w-full !bg-white" />
+          <Skeleton className="mt-2 h-4 w-2/3 !bg-white" />
+        </div>
+      ) : (
+        <p className="mt-4 text-sm leading-6 text-foreground">{insight}</p>
+      )}
 
       <Link
         href="/assistant"

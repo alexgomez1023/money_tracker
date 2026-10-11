@@ -9,9 +9,10 @@ lerna-debug.log*
 # Agents
 /.Agents
 /.claude
+skills-lock.json
 
 # Prisma
-/migrations
+migrations/
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json

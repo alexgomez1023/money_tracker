@@ -57,6 +57,10 @@ export async function signupUser({ name, phone, email, password }) {
   let phone_number;
   try {
     phone_number = await addPhotonUser(phone, name);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { agentPhone: phone_number },
+    });
   } catch (err) {
     console.error("Photon setup failed:", phone);
     throw new HttpError(
@@ -77,9 +81,33 @@ export async function loginUser({ phone, password }) {
     throw new HttpError(401, "Invalid phone number or password");
   }
 
+  const agentPhone = await ensureAgentPhone(user);
+
   const tokens = await createSession(user.id);
 
-  return { user: toPublicUser(user), ...tokens };
+  return { user: toPublicUser(user), agentPhone, ...tokens };
+}
+
+// Accounts made before agentPhone was saved get theirs filled in the next time they log in
+async function ensureAgentPhone(user) {
+  if (user.agentPhone) {
+    return user.agentPhone;
+  }
+
+  try {
+    const agentPhone = await addPhotonUser(user.phone, user.name);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { agentPhone },
+    });
+
+    return agentPhone;
+  } catch (err) {
+    console.error("Photon setup failed:", user.phone, err.message);
+
+    return null;
+  }
 }
 
 export async function refreshToken({ refreshToken }) {

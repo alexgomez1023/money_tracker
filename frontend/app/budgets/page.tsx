@@ -3,8 +3,9 @@
 
 import { useEffect, useState } from "react";
 import {
-  getBudgets,
-  saveBudgets,
+  loadBudgets,
+  onBudgetsUpdated,
+  saveBudgetLimits,
   initialBudgets,
   type Budget,
 } from "@/lib/budget-storage";
@@ -17,31 +18,37 @@ import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
 import { getTransactions } from "@/lib/bank-data";
 
+// One color per budget state, the same for every category.
+const STATUS_COLORS = {
+  onTrack: "#0076A8",
+  nearLimit: "#D97706",
+  overBudget: "#D22E3A",
+};
+
 export default function BudgetsPage() {
   const [budgets, setBudgets] = useState<Budget[]>(initialBudgets);
   const [transactions, setTransactions] = useState<SpendingTransaction[]>([]);
   const [month, setMonth] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [transactionsLoading, setTransactionsLoading] = useState(true);
+  const [budgetsLoading, setBudgetsLoading] = useState(true);
+
+  // Everything stays a skeleton until both have arrived, so the numbers appear together.
+  const loading = transactionsLoading || budgetsLoading;
   const [error, setError] = useState("");
 
   const [editing, setEditing] = useState<string | null>(null);
   const [newLimit, setNewLimit] = useState("");
 
-  // Load saved budget limits.
+  // Load budget limits from the user's account, and again whenever they are saved.
   useEffect(() => {
-    function refreshBudgets() {
-      setBudgets(getBudgets());
+    async function refreshBudgets() {
+      setBudgets(await loadBudgets());
+      setBudgetsLoading(false);
     }
 
     refreshBudgets();
 
-    window.addEventListener("budgets-updated", refreshBudgets);
-    window.addEventListener("storage", refreshBudgets);
-
-    return () => {
-      window.removeEventListener("budgets-updated", refreshBudgets);
-      window.removeEventListener("storage", refreshBudgets);
-    };
+    return onBudgetsUpdated(refreshBudgets);
   }, []);
 
   // Load transactions from Plaid.
@@ -55,7 +62,7 @@ export default function BudgetsPage() {
       } catch {
         setError("Unable to load Plaid spending. Connect your bank first.");
       } finally {
-        setLoading(false);
+        setTransactionsLoading(false);
       }
     }
 
@@ -84,7 +91,7 @@ export default function BudgetsPage() {
   }
 
   // Save a new monthly limit.
-  function saveBudget(category: string) {
+  async function saveBudget(category: string) {
     const value = Number(newLimit);
 
     if (!Number.isFinite(value) || value <= 0) {
@@ -98,11 +105,20 @@ export default function BudgetsPage() {
         : budget
     );
 
-    saveBudgets(updated);
+    const previous = budgets;
+
     setBudgets(updated);
 
     setEditing(null);
     setNewLimit("");
+
+    const saved = await saveBudgetLimits(updated);
+
+    if (!saved) {
+      setBudgets(previous);
+
+      alert("Your budget couldn't be saved. Please try again.");
+    }
   }
 
   const hasOverspending = liveBudgets.some(
@@ -145,7 +161,11 @@ export default function BudgetsPage() {
             </p>
 
             <p className="mt-3 text-xl font-bold text-primary sm:text-2xl">
-              ${totalBudget.toFixed(2)}
+              {loading ? (
+                <Skeleton className="h-7 w-24" />
+              ) : (
+                `$${totalBudget.toFixed(2)}`
+              )}
             </p>
           </Card>
 
@@ -242,6 +262,12 @@ export default function BudgetsPage() {
               const nearLimit =
                 percentage >= 80 && !overBudget;
 
+              const statusColor = overBudget
+                ? STATUS_COLORS.overBudget
+                : nearLimit
+                  ? STATUS_COLORS.nearLimit
+                  : STATUS_COLORS.onTrack;
+
               return (
                 <Card key={budget.category}>
                   <div className="flex items-center justify-between gap-3">
@@ -264,7 +290,8 @@ export default function BudgetsPage() {
                     <button
                       type="button"
                       onClick={() => startEditing(budget)}
-                      className="rounded-lg border border-border-custom px-3 py-2 text-xs font-semibold text-primary hover:bg-surface-blue"
+                      disabled={budgetsLoading}
+                      className="rounded-lg border border-border-custom px-3 py-2 text-xs font-semibold text-primary hover:bg-surface-blue disabled:opacity-50"
                     >
                       Edit Budget
                     </button>
@@ -276,7 +303,11 @@ export default function BudgetsPage() {
                     </span>
 
                     <span className="font-semibold text-foreground">
-                      ${budget.limit.toFixed(2)}
+                      {loading ? (
+                        <Skeleton className="h-4 w-16" />
+                      ) : (
+                        `$${budget.limit.toFixed(2)}`
+                      )}
                     </span>
                   </div>
 
@@ -289,11 +320,7 @@ export default function BudgetsPage() {
                             ? Math.min(percentage, 100)
                             : 0
                         }%`,
-                        backgroundColor: overBudget
-                          ? "#D22E3A"
-                          : nearLimit
-                            ? "#E59A30"
-                            : budget.color,
+                        backgroundColor: statusColor,
                       }}
                     />
                   </div>
@@ -310,19 +337,16 @@ export default function BudgetsPage() {
                     </p>
 
                     {!loading && !error && (
-                      overBudget ? (
-                        <p className="text-xs font-semibold text-accent">
-                          Over budget
-                        </p>
-                      ) : nearLimit ? (
-                        <p className="text-xs font-semibold text-amber-600">
-                          Approaching limit
-                        </p>
-                      ) : (
-                        <p className="text-xs font-medium text-secondary">
-                          On track
-                        </p>
-                      )
+                      <p
+                        className="text-xs font-semibold"
+                        style={{ color: statusColor }}
+                      >
+                        {overBudget
+                          ? "Over budget"
+                          : nearLimit
+                            ? "Approaching limit"
+                            : "On track"}
+                      </p>
                     )}
                   </div>
 
@@ -400,7 +424,7 @@ export default function BudgetsPage() {
         </section>
 
         <p className="mt-6 text-center text-xs text-muted">
-          Spending from Plaid Sandbox. Budget limits are saved in this browser.
+          Spending from Plaid Sandbox. Budget limits are saved to your account.
         </p>
       </div>
     </main>

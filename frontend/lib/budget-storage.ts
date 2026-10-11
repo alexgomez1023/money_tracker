@@ -1,3 +1,5 @@
+import { authFetch } from "@/lib/auth";
+
 export type Budget = {
   category: string;
   spent: number;
@@ -5,49 +7,75 @@ export type Budget = {
   color: string;
 };
 
+// The four categories with their default limits. Spending is filled in from transactions.
 export const initialBudgets: Budget[] = [
-  { category: "Food & Drink", spent: 320, limit: 400, color: "#0076A8" },
-  { category: "Shopping", spent: 210, limit: 300, color: "#D22E3A" },
-  { category: "Transportation", spent: 95, limit: 200, color: "#8ECDE7" },
+  { category: "Food & Drink", spent: 0, limit: 400, color: "#0076A8" },
+  { category: "Shopping", spent: 0, limit: 300, color: "#D22E3A" },
+  { category: "Transportation", spent: 0, limit: 200, color: "#8ECDE7" },
   { category: "Other", spent: 0, limit: 300, color: "#64748B" },
 ];
 
-const STORAGE_KEY = "money-tracker-budgets";
+const BUDGETS_EVENT = "budgets-updated";
 
-export function getBudgets(): Budget[] {
-  if (typeof window === "undefined") return initialBudgets;
+type SavedBudget = {
+  category: string;
+  limit: number;
+};
+
+// Loads the user's limits from their account. Nothing is kept in the browser.
+// Returns the default limits when signed out or when the request fails.
+export async function loadBudgets(): Promise<Budget[]> {
   try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (!stored) return initialBudgets;
-    const parsed: unknown = JSON.parse(stored);
-    if (!Array.isArray(parsed) || parsed.length !== initialBudgets.length) {
-      return initialBudgets;
+    const response = await authFetch("/api/budgets", {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error("Unable to load budgets");
     }
-    const valid = initialBudgets.every((base) =>
-      parsed.some((item) =>
-        item !== null && typeof item === "object" &&
-        item.category === base.category &&
-        typeof item.limit === "number" &&
-        Number.isFinite(item.limit) && item.limit > 0
-      )
-    );
-    if (!valid) return initialBudgets;
-    // Keep sample spending and colors consistent; persist editable limits only.
+
+    const data = await response.json();
+    const saved: SavedBudget[] = data.budgets ?? [];
+
     return initialBudgets.map((base) => ({
       ...base,
-      limit: (parsed as Budget[]).find((item) => item.category === base.category)!.limit,
+      limit:
+        saved.find((item) => item.category === base.category)?.limit ??
+        base.limit,
     }));
   } catch {
     return initialBudgets;
   }
 }
 
-export function saveBudgets(budgets: Budget[]): void {
-  if (typeof window === "undefined") return;
+// Saves the limits to the user's account and tells the other budget views to reload.
+// Returns false if the backend did not accept them.
+export async function saveBudgetLimits(budgets: Budget[]) {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(budgets));
-    window.dispatchEvent(new Event("budgets-updated"));
+    const response = await authFetch("/api/budgets", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        budgets: budgets.map((budget) => ({
+          category: budget.category,
+          limit: budget.limit,
+        })),
+      }),
+    });
+
+    if (response.ok) {
+      window.dispatchEvent(new Event(BUDGETS_EVENT));
+    }
+
+    return response.ok;
   } catch {
-    // In private browsing or restricted environments, changes remain in page state.
+    return false;
   }
+}
+
+// Calls the listener whenever saved limits change. Returns a function that stops listening.
+export function onBudgetsUpdated(listener: () => void) {
+  window.addEventListener(BUDGETS_EVENT, listener);
+
+  return () => window.removeEventListener(BUDGETS_EVENT, listener);
 }

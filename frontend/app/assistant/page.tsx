@@ -1,9 +1,8 @@
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import Card from "@/components/ui/Card";
-import { getBudgets } from "@/lib/budget-storage";
+import { loadBudgets } from "@/lib/budget-storage";
 import { getSavingsGoals } from "@/lib/plaid-savings";
 
 type Message = {
@@ -70,7 +69,7 @@ export default function AssistantPage() {
 
     try {
       // Read the user's latest saved budget limits.
-      const budgets = getBudgets().map((budget) => ({
+      const budgets = (await loadBudgets()).map((budget) => ({
         category: budget.category,
         limit: budget.limit,
       }));
@@ -95,7 +94,7 @@ export default function AssistantPage() {
 
       if (!contentType.includes("application/json")) {
         throw new Error(
-          "The finance assistant returned an unexpected response. Check that the backend is running."
+          "The finance assistant returned an unexpected response. Check that the backend is running.",
         );
       }
 
@@ -105,7 +104,7 @@ export default function AssistantPage() {
         throw new Error(
           typeof data.error === "string"
             ? data.error
-            : "Unable to answer your question."
+            : "Unable to answer your question.",
         );
       }
 
@@ -158,9 +157,7 @@ export default function AssistantPage() {
         {/* Header */}
         <header className="mb-6 flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm text-muted">
-              Your Financial Companion
-            </p>
+            <p className="text-sm text-muted">Your Financial Companion</p>
 
             <h1 className="mt-1 text-2xl font-bold tracking-tight text-primary">
               AI Finance Assistant
@@ -180,17 +177,6 @@ export default function AssistantPage() {
           </button>
         </header>
 
-        {/* Connection Notice */}
-        <div className="mb-5 rounded-xl border border-border-custom bg-surface-blue px-4 py-3">
-          <p className="text-xs leading-relaxed text-primary">
-            <strong>AI Finance Assistant:</strong> Ask Gemini Flash
-            about your connected transactions, account balances,
-            monthly budgets, and savings goals. Your latest saved
-            budget limits and savings goals are included with
-            each question.
-          </p>
-        </div>
-
         {/* Chat Messages */}
         <Card className="flex min-h-[350px] flex-1 flex-col !p-0">
           <div
@@ -201,9 +187,7 @@ export default function AssistantPage() {
               <div
                 key={message.id}
                 className={`flex ${
-                  message.role === "user"
-                    ? "justify-end"
-                    : "justify-start"
+                  message.role === "user" ? "justify-end" : "justify-start"
                 }`}
               >
                 <div
@@ -293,8 +277,8 @@ export default function AssistantPage() {
         </form>
 
         <p className="mt-3 text-center text-xs text-muted">
-          Financial information is for educational purposes only,
-          not personalized financial advice.
+          Financial information is for educational purposes only, not
+          personalized financial advice.
         </p>
       </div>
     </main>

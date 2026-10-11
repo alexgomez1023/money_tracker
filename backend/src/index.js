@@ -3,6 +3,7 @@ import financeChatRouter from "./routers/FinanceChat.js";
 import authRouter from "./routers/Auth.js";
 import userRouter from "./routers/User.js";
 import bankRouter from "./routers/Bank.js";
+import budgetsRouter from "./routers/Budgets.js";
 import agentRouter from "./routers/Agent.js";
 import webhooksRouter from "./routers/Webhooks.js";
 import { startListening } from "./services/photon.js";
@@ -21,6 +22,7 @@ app.use("/me", userRouter);
 app.use("/agent", agentRouter);
 app.use("/webhooks", webhooksRouter);
 app.use("/offers", offersRouter);
+app.use("/budgets", budgetsRouter);
 app.use(bankRouter);
 app.use(financeChatRouter);
 
