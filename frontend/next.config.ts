@@ -20,9 +20,17 @@ const nextConfig: NextConfig = {
     },
   },
 
-  // Forward bank requests to the Express backend.
+  // Forward API requests to the Express backend.
   async rewrites() {
     return [
+      {
+        source: "/api/auth/:path*",
+        destination: "http://localhost:3001/auth/:path*",
+      },
+      {
+        source: "/api/me",
+        destination: "http://localhost:3001/me",
+      },
       {
         source: "/api/plaid/:path*",
         destination: "http://localhost:3001/plaid/:path*",

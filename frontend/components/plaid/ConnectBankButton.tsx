@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePlaidLink } from "react-plaid-link";
+import { authFetch } from "@/lib/auth";
 import { clearBankData } from "@/lib/bank-data";
 
 export default function ConnectBankButton() {
@@ -13,7 +14,7 @@ export default function ConnectBankButton() {
   useEffect(() => {
     async function getLinkToken() {
       try {
-        const response = await fetch("/api/plaid/link-token", {
+        const response = await authFetch("/api/plaid/link-token", {
           method: "POST",
         });
 
@@ -39,7 +40,7 @@ export default function ConnectBankButton() {
     setMessage("Connecting bank...");
 
     try {
-      const response = await fetch("/api/plaid/exchange", {
+      const response = await authFetch("/api/plaid/exchange", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ public_token: publicToken }),
