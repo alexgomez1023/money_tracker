@@ -9,6 +9,7 @@
     "node": ">=22.9"
   },
   "scripts": {
+    "build": "prisma generate",
     "start": "node --env-file-if-exists=.env src/index.js",
     "dev": "node --env-file=.env --watch src/index.js",
     "sync:offers": "node --env-file=.env Scripts/syncOffers.js",
