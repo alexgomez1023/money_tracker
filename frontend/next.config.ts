@@ -44,6 +44,14 @@ const nextConfig: NextConfig = {
         destination: "http://localhost:3001/transactions",
       },
       {
+        source: "/api/insights",
+        destination: "http://localhost:3001/insights",
+      },
+      {
+        source: "/api/finance-chat",
+        destination: "http://localhost:3001/finance-chat",
+      },
+      {
         source: "/api/offers",
         destination: "http://localhost:3001/offers",
       },

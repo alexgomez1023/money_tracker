@@ -1,8 +1,36 @@
+"use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/ui/Icon";
 
 export default function AIInsight() {
+  const [insight, setInsight] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadInsight() {
+      try {
+        const response = await fetch("/api/insights");
+
+        if (!response.ok) {
+          throw new Error("Failed to load insights");
+        }
+
+        const data = await response.json();
+        setInsight(data.insight);
+      } catch {
+        setInsight(
+          "Connect your bank to see personalized spending insights."
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadInsight();
+  }, []);
+
   return (
     <section className="rounded-2xl border border-[#D6E9F5] bg-surface-blue p-5">
       <div className="flex items-center gap-3">
@@ -21,9 +49,9 @@ export default function AIInsight() {
       </div>
 
       <p className="mt-4 text-sm leading-6 text-foreground">
-        You could save an additional $45 this month by
-        reducing food delivery spending. Small adjustments
-        can make a meaningful difference toward your goals.
+        {loading
+          ? "Analyzing your recent spending..."
+          : insight}
       </p>
 
       <Link

@@ -3,6 +3,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Card from "@/components/ui/Card";
+import { getBudgets } from "@/lib/budget-storage";
+import { getSavingsGoals } from "@/lib/plaid-savings";
 
 type Message = {
   id: number;
@@ -11,9 +13,9 @@ type Message = {
 };
 
 const suggestedQuestions = [
-  "How can I save more money?",
-  "Help me review my budget",
-  "How can I reduce food spending?",
+  "Review my monthly budgets",
+  "How are my savings goals progressing?",
+  "Am I spending more than I earn?",
   "What should I prioritize financially?",
 ];
 
@@ -22,87 +24,19 @@ const initialMessages: Message[] = [
     id: 1,
     role: "assistant",
     content:
-      "Hi! I'm your AI Finance Assistant. I can help you explore spending habits, budgets, and savings goals. What would you like to discuss?",
+      "Hi! I'm your AI Finance Assistant. I can help you review your spending, track budgets, understand your account balances, and work toward your savings goals. What would you like to discuss?",
   },
 ];
 
-function getDemoResponse(question: string): string {
-  const text = question.toLowerCase();
-
-  if (
-    text.includes("food") ||
-    text.includes("restaurant") ||
-    text.includes("coffee")
-  ) {
-    return (
-      "Food and drink spending can add up quickly. " +
-      "Try reviewing your restaurant and coffee purchases, " +
-      "setting a realistic weekly spending target, and " +
-      "planning a few meals ahead. " +
-      "These are general suggestions based on demo data."
-    );
-  }
-
-  if (
-    text.includes("budget") ||
-    text.includes("spending")
-  ) {
-    return (
-      "A useful starting point is comparing your spending " +
-      "against each category's monthly limit. " +
-      "Look for categories approaching 80% of their budget " +
-      "and consider adjusting discretionary purchases. " +
-      "This is a simulated response, not a live account analysis."
-    );
-  }
-
-  if (
-    text.includes("save") ||
-    text.includes("saving") ||
-    text.includes("goal")
-  ) {
-    return (
-      "Consider setting a specific savings goal and " +
-      "contributing a manageable amount consistently. " +
-      "Reviewing recurring expenses can help identify " +
-      "money you might redirect toward that goal. " +
-      "This is a demo recommendation."
-    );
-  }
-
-  if (
-    text.includes("debt") ||
-    text.includes("credit")
-  ) {
-    return (
-      "A good first step is listing your balances, " +
-      "interest rates, and minimum payments. " +
-      "Prioritizing high-interest debt may reduce " +
-      "the total interest you pay. " +
-      "For now, I can only provide general demo guidance."
-    );
-  }
-
-  return (
-    "That's a great financial question. " +
-    "You can start by reviewing your recent transactions, " +
-    "checking your budget limits, and setting a clear " +
-    "savings goal. Once our AI backend is connected, " +
-    "this assistant will be able to provide more " +
-    "personalized responses using authorized account data."
-  );
-}
-
 export default function AssistantPage() {
-  const [messages, setMessages] =
-    useState<Message[]>(initialMessages);
-
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const nextIdRef = useRef(2);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sendingRef = useRef(false);
+  const chatVersionRef = useRef(0);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
@@ -112,16 +46,17 @@ export default function AssistantPage() {
 
   useEffect(() => {
     return () => {
-      if (timeoutRef.current !== null) {
-        clearTimeout(timeoutRef.current);
-      }
+      chatVersionRef.current += 1;
     };
   }, []);
 
-  function sendMessage(messageText?: string) {
+  async function sendMessage(messageText?: string) {
     const question = (messageText ?? input).trim();
 
-    if (!question || isTyping) return;
+    if (!question || sendingRef.current) return;
+
+    sendingRef.current = true;
+    const chatVersion = chatVersionRef.current;
 
     const userMessage: Message = {
       id: nextIdRef.current++,
@@ -133,30 +68,84 @@ export default function AssistantPage() {
     setInput("");
     setIsTyping(true);
 
-    // Temporary demo response.
-    // Replace with backend API call when Gemini is ready.
-    timeoutRef.current = setTimeout(() => {
+    try {
+      // Read the user's latest saved budget limits.
+      const budgets = getBudgets().map((budget) => ({
+        category: budget.category,
+        limit: budget.limit,
+      }));
+
+      // Read the user's latest savings goals.
+      const savingsGoals = getSavingsGoals();
+
+      // Send dashboard preferences with the question.
+      const response = await fetch("/api/finance-chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: question,
+          budgets,
+          savingsGoals,
+        }),
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+
+      if (!contentType.includes("application/json")) {
+        throw new Error(
+          "The finance assistant returned an unexpected response. Check that the backend is running."
+        );
+      }
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
+            : "Unable to answer your question."
+        );
+      }
+
+      // Ignore responses from a previous chat.
+      if (chatVersion !== chatVersionRef.current) return;
+
       const assistantMessage: Message = {
         id: nextIdRef.current++,
         role: "assistant",
-        content: getDemoResponse(question),
+        content:
+          typeof data.reply === "string" && data.reply.trim()
+            ? data.reply
+            : "The assistant returned an empty response.",
       };
 
-      setMessages((current) => [
-        ...current,
-        assistantMessage,
-      ]);
+      setMessages((current) => [...current, assistantMessage]);
+    } catch (error) {
+      if (chatVersion !== chatVersionRef.current) return;
 
-      setIsTyping(false);
-      timeoutRef.current = null;
-    }, 800);
+      const errorMessage: Message = {
+        id: nextIdRef.current++,
+        role: "assistant",
+        content:
+          error instanceof Error
+            ? error.message
+            : "Something went wrong. Please try again.",
+      };
+
+      setMessages((current) => [...current, errorMessage]);
+    } finally {
+      if (chatVersion === chatVersionRef.current) {
+        sendingRef.current = false;
+        setIsTyping(false);
+      }
+    }
   }
 
   function clearChat() {
-    if (timeoutRef.current !== null) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
+    chatVersionRef.current += 1;
+    sendingRef.current = false;
 
     setMessages(initialMessages);
     setInput("");
@@ -166,7 +155,6 @@ export default function AssistantPage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen max-w-4xl flex-col px-5 pb-32 pt-8 sm:px-8">
-
         {/* Header */}
         <header className="mb-6 flex items-start justify-between gap-4">
           <div>
@@ -192,11 +180,14 @@ export default function AssistantPage() {
           </button>
         </header>
 
-        {/* Demo Notice */}
+        {/* Connection Notice */}
         <div className="mb-5 rounded-xl border border-border-custom bg-surface-blue px-4 py-3">
           <p className="text-xs leading-relaxed text-primary">
-            <strong>Demo Mode:</strong> Responses are simulated.
-            Live Gemini-powered financial insights are coming soon.
+            <strong>AI Finance Assistant:</strong> Ask Gemini Flash
+            about your connected transactions, account balances,
+            monthly budgets, and savings goals. Your latest saved
+            budget limits and savings goals are included with
+            each question.
           </p>
         </div>
 
@@ -216,7 +207,7 @@ export default function AssistantPage() {
                 }`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                  className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                     message.role === "user"
                       ? "bg-primary text-white"
                       : "bg-surface-blue text-foreground"
@@ -227,11 +218,11 @@ export default function AssistantPage() {
               </div>
             ))}
 
-            {/* Typing Indicator */}
+            {/* Loading Indicator */}
             {isTyping && (
               <div className="flex justify-start">
                 <div className="rounded-2xl bg-surface-blue px-4 py-3 text-sm text-muted">
-                  Preparing demo response...
+                  Analyzing your finances...
                 </div>
               </div>
             )}
@@ -276,9 +267,7 @@ export default function AssistantPage() {
           <textarea
             id="chat-input"
             value={input}
-            onChange={(event) =>
-              setInput(event.target.value)
-            }
+            onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
               if (
                 event.key === "Enter" &&
@@ -304,7 +293,8 @@ export default function AssistantPage() {
         </form>
 
         <p className="mt-3 text-center text-xs text-muted">
-          Demo assistant — not personalized financial advice.
+          Financial information is for educational purposes only,
+          not personalized financial advice.
         </p>
       </div>
     </main>
