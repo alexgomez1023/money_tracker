@@ -1,7 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-import { GoogleGenAI } from "@google/genai";
-
 const options = {
   vertexai: true,
   project: process.env.GCP_PROJECT_ID,
