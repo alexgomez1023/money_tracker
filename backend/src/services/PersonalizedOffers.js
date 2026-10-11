@@ -18,11 +18,19 @@ async function personalizeWithGemini(
     return [];
   }
   try {
-    const ai = new GoogleGenAI({
+    const options = {
       vertexai: true,
-      project: process.env.GOOGLE_CLOUD_PROJECT,
-      location: process.env.GOOGLE_CLOUD_LOCATION || "global",
-    });
+      project: process.env.GCP_PROJECT_ID,
+      location: process.env.GCP_LOCATION,
+    };
+
+    if (process.env.GCP_KEY) {
+      options.googleAuthOptions = {
+        credentials: JSON.parse(process.env.GCP_KEY),
+      };
+    }
+
+    const ai = new GoogleGenAI(options);
 
     const spendingSummary = {
       merchants: [...merchantSpending.entries()]
