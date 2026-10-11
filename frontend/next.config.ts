@@ -23,7 +23,11 @@ const nextConfig: NextConfig = {
   // Forward bank requests to the Express backend.
   async rewrites() {
     return [
+      
       {
+  source: "/api/insights",
+  destination: "http://localhost:3001/insights",
+},{
         source: "/api/plaid/:path*",
         destination: "http://localhost:3001/plaid/:path*",
       },
@@ -35,6 +39,10 @@ const nextConfig: NextConfig = {
         source: "/api/transactions",
         destination: "http://localhost:3001/transactions",
       },
+      {
+  source: "/api/finance-chat",
+  destination: "http://localhost:3001/finance-chat",
+},
     ];
   },
 };
