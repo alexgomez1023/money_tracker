@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Icon from "@/components/ui/Icon";
+import { SkeletonRows } from "@/components/ui/Skeleton";
+import { getTransactions } from "@/lib/bank-data";
 
 type PlaidTransaction = {
   transaction_id: string;
@@ -26,15 +28,7 @@ export default function RecentTransactions() {
   useEffect(() => {
     async function loadTransactions() {
       try {
-        const response = await fetch("/api/transactions", {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          throw new Error("Unable to load transactions");
-        }
-
-        const data = await response.json();
+        const data = await getTransactions<PlaidTransaction>();
         setTransactions(data.transactions ?? []);
       } catch {
         setError("Connect a bank to view transactions.");
@@ -63,11 +57,7 @@ export default function RecentTransactions() {
       </div>
 
       <Card className="!p-0">
-        {loading && (
-          <p className="p-5 text-sm text-muted">
-            Loading transactions...
-          </p>
-        )}
+        {loading && <SkeletonRows count={5} />}
 
         {error && (
           <p className="p-5 text-sm text-muted">

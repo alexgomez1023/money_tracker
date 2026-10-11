@@ -1,4 +1,6 @@
 
+import { getAccounts } from "@/lib/bank-data";
+
 export type SavingsGoal = {
   id: number;
   name: string;
@@ -72,21 +74,9 @@ export function getSavingsBalance(accounts: PlaidAccount[]) {
 }
 
 export async function fetchSavingsBalance(): Promise<number> {
-  const response = await fetch("/api/accounts", {
-    cache: "no-store",
-  });
+  const data = await getAccounts<PlaidAccount>();
 
-  if (!response.ok) {
-    throw new Error("Unable to load Plaid accounts");
-  }
-
-  const data = await response.json();
-
-  const accounts: PlaidAccount[] = Array.isArray(data)
-    ? data
-    : data.accounts ?? [];
-
-  return getSavingsBalance(accounts);
+  return getSavingsBalance(data.accounts ?? []);
 }
 
 export function getTotalAllocated(goals: SavingsGoal[]) {

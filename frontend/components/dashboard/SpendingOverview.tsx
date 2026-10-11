@@ -9,6 +9,9 @@ import {
   initialBudgets,
   type Budget,
 } from "@/lib/budget-storage";
+import Skeleton from "@/components/ui/Skeleton";
+import { getTransactions } from "@/lib/bank-data";
+import { getCurrentMonth } from "@/lib/plaid-spending";
 
 type PlaidTransaction = {
   amount: number;
@@ -41,6 +44,7 @@ function getBudgetCategory(primary: string): string {
 export default function SpendingOverview() {
   const [budgets, setBudgets] = useState<Budget[]>(initialBudgets);
   const [transactions, setTransactions] = useState<PlaidTransaction[]>([]);
+  const [month, setMonth] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -67,15 +71,8 @@ export default function SpendingOverview() {
   useEffect(() => {
     async function loadTransactions() {
       try {
-        const response = await fetch("/api/transactions", {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          throw new Error("Unable to load transactions");
-        }
-
-        const data = await response.json();
+        const data = await getTransactions<PlaidTransaction>();
+        setMonth(getCurrentMonth());
         setTransactions(data.transactions ?? []);
       } catch {
         setError("Connect a bank to view spending.");
@@ -88,11 +85,6 @@ export default function SpendingOverview() {
   }, []);
 
   // Calculate spending for the current month.
-  const now = new Date();
-  const month = `${now.getFullYear()}-${String(
-    now.getMonth() + 1
-  ).padStart(2, "0")}`;
-
   const spendingByCategory: Record<string, number> = {
     "Food & Drink": 0,
     Shopping: 0,
@@ -157,7 +149,13 @@ export default function SpendingOverview() {
         </div>
 
         <span className="text-lg font-bold text-primary">
-          {loading ? "Loading..." : error ? "—" : `$${total.toFixed(2)}`}
+          {loading ? (
+            <Skeleton className="h-6 w-24" />
+          ) : error ? (
+            "—"
+          ) : (
+            `$${total.toFixed(2)}`
+          )}
         </span>
       </div>
 
@@ -188,9 +186,13 @@ export default function SpendingOverview() {
               remaining < 0 ? "text-accent" : "text-secondary"
             }`}
           >
-            {loading || error
-              ? "—"
-              : `${remaining < 0 ? "-" : ""}$${Math.abs(remaining).toFixed(2)}`}
+            {loading ? (
+              <Skeleton className="h-4 w-16 !bg-white" />
+            ) : error ? (
+              "—"
+            ) : (
+              `${remaining < 0 ? "-" : ""}$${Math.abs(remaining).toFixed(2)}`
+            )}
           </span>
         </div>
       </div>
@@ -235,7 +237,13 @@ export default function SpendingOverview() {
             </div>
 
             <span className="text-sm font-semibold">
-              {loading || error ? "—" : `$${item.spent.toFixed(2)}`}
+              {loading ? (
+                <Skeleton className="h-4 w-14" />
+              ) : error ? (
+                "—"
+              ) : (
+                `$${item.spent.toFixed(2)}`
+              )}
             </span>
           </div>
         ))}

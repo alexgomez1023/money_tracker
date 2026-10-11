@@ -1,81 +1,23 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Card from "@/components/ui/Card";
+import Skeleton from "@/components/ui/Skeleton";
 
-type Deal = {
-  id: number;
-  merchant: string;
-  category: string;
-  title: string;
+type Offer = {
+  id: string;
+  name: string;
+  offer: string;
   description: string;
-  savings: string;
-  color: string;
+  category: string;
 };
 
-const demoDeals: Deal[] = [
-  {
-    id: 1,
-    merchant: "Coffee Shop",
-    category: "Food & Drink",
-    title: "15% off",
-    description: "Save on your next coffee purchase.",
-    savings: "Up to $3 estimated savings",
-    color: "#0076A8",
-  },
-  {
-    id: 2,
-    merchant: "Grocery Market",
-    category: "Groceries",
-    title: "$10 off",
-    description: "Save on a grocery purchase of $75 or more.",
-    savings: "$10 estimated savings",
-    color: "#24826B",
-  },
-  {
-    id: 3,
-    merchant: "Clothing Store",
-    category: "Shopping",
-    title: "20% off",
-    description: "Refresh your wardrobe for less.",
-    savings: "Up to $20 estimated savings",
-    color: "#D22E3A",
-  },
-  {
-    id: 4,
-    merchant: "Movie Theater",
-    category: "Entertainment",
-    title: "$5 off",
-    description: "Save on your next movie ticket.",
-    savings: "$5 estimated savings",
-    color: "#7554A3",
-  },
-  {
-    id: 5,
-    merchant: "Restaurant",
-    category: "Food & Drink",
-    title: "10% off",
-    description: "Enjoy a discount on your next meal.",
-    savings: "Up to $8 estimated savings",
-    color: "#0076A8",
-  },
-  {
-    id: 6,
-    merchant: "Electronics Store",
-    category: "Shopping",
-    title: "$25 off",
-    description: "Save on selected technology purchases.",
-    savings: "$25 estimated savings",
-    color: "#D22E3A",
-  },
-];
-
-const categories = [
-  "All",
-  ...Array.from(
-    new Set(demoDeals.map((deal) => deal.category))
-  ),
+const categoryColors = [
+  "#0076A8",
+  "#24826B",
+  "#D22E3A",
+  "#7554A3",
 ];
 
 export default function DealsPage() {
@@ -83,19 +25,63 @@ export default function DealsPage() {
   const [selectedCategory, setSelectedCategory] =
     useState("All");
 
-  const [savedDealIds, setSavedDealIds] = useState<number[]>(
+  const [savedDealIds, setSavedDealIds] = useState<string[]>(
     []
   );
 
   const [showSavedOnly, setShowSavedOnly] = useState(false);
 
+  const [deals, setDeals] = useState<Offer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // Load offers from our backend.
+  useEffect(() => {
+    async function loadOffers() {
+      try {
+        const response = await fetch("/api/offers", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load offers");
+        }
+
+        const data = await response.json();
+        setDeals(data.offers ?? []);
+      } catch {
+        setError("Unable to load offers. Try again later.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadOffers();
+  }, []);
+
+  // Create filters from the offer categories.
+  const categories = useMemo(() => {
+    return [
+      "All",
+      ...Array.from(
+        new Set(deals.map((deal) => deal.category))
+      ),
+    ];
+  }, [deals]);
+
+  function getColor(category: string) {
+    const index = Math.max(categories.indexOf(category) - 1, 0);
+
+    return categoryColors[index % categoryColors.length];
+  }
+
   const filteredDeals = useMemo(() => {
-    return demoDeals.filter((deal) => {
+    return deals.filter((deal) => {
       const query = search.trim().toLowerCase();
 
       const matchesSearch =
-        deal.merchant.toLowerCase().includes(query) ||
-        deal.title.toLowerCase().includes(query) ||
+        deal.name.toLowerCase().includes(query) ||
+        deal.offer.toLowerCase().includes(query) ||
         deal.description.toLowerCase().includes(query) ||
         deal.category.toLowerCase().includes(query);
 
@@ -112,9 +98,9 @@ export default function DealsPage() {
         matchesSaved
       );
     });
-  }, [search, selectedCategory, savedDealIds, showSavedOnly]);
+  }, [deals, search, selectedCategory, savedDealIds, showSavedOnly]);
 
-  function toggleSaved(dealId: number) {
+  function toggleSaved(dealId: string) {
     setSavedDealIds((current) =>
       current.includes(dealId)
         ? current.filter((id) => id !== dealId)
@@ -203,7 +189,8 @@ export default function DealsPage() {
                       : "border-border-custom bg-white text-foreground hover:border-secondary"
                   }`}
                 >
-                  {category}
+                  {category.charAt(0).toUpperCase() +
+                    category.slice(1)}
                 </button>
               );
             })}
@@ -246,11 +233,38 @@ export default function DealsPage() {
         </div>
 
         {/* Deals Grid */}
-        {filteredDeals.length > 0 ? (
+        {loading ? (
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            {Array.from({ length: 6 }, (_, index) => (
+              <Card key={index}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="mt-3 h-5 w-36" />
+                  </div>
+
+                  <Skeleton className="h-11 w-11 !rounded-xl" />
+                </div>
+
+                <Skeleton className="mt-5 h-8 w-44" />
+                <Skeleton className="mt-3 h-4 w-full" />
+                <Skeleton className="mt-5 h-11 w-full !rounded-xl" />
+              </Card>
+            ))}
+          </div>
+        ) : error ? (
+          <Card className="mt-5">
+            <p className="py-10 text-center text-sm text-muted">
+              {error}
+            </p>
+          </Card>
+        ) : filteredDeals.length > 0 ? (
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             {filteredDeals.map((deal) => {
               const isSaved =
                 savedDealIds.includes(deal.id);
+
+              const color = getColor(deal.category);
 
               return (
                 <Card key={deal.id}>
@@ -261,37 +275,31 @@ export default function DealsPage() {
                       </p>
 
                       <h3 className="mt-2 text-base font-bold text-primary">
-                        {deal.merchant}
+                        {deal.name}
                       </h3>
                     </div>
 
                     <div
                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white"
                       style={{
-                        backgroundColor: deal.color,
+                        backgroundColor: color,
                       }}
                       aria-hidden="true"
                     >
-                      {deal.merchant.charAt(0)}
+                      {deal.category.charAt(0).toUpperCase()}
                     </div>
                   </div>
 
                   <p
                     className="mt-5 text-2xl font-bold"
-                    style={{ color: deal.color }}
+                    style={{ color }}
                   >
-                    {deal.title}
+                    {deal.offer}
                   </p>
 
                   <p className="mt-2 min-h-10 text-sm leading-relaxed text-muted">
                     {deal.description}
                   </p>
-
-                  <div className="mt-5 rounded-xl bg-surface-blue px-4 py-3">
-                    <p className="text-xs font-semibold text-primary">
-                      {deal.savings}
-                    </p>
-                  </div>
 
                   <div className="mt-5 border-t border-border-custom pt-4">
                     <button
@@ -337,11 +345,10 @@ export default function DealsPage() {
           </Card>
         )}
 
-        {/* Demo Notice */}
+        {/* Source Notice */}
         <p className="mt-8 text-center text-xs leading-relaxed text-muted">
-          Demo offers only. Discounts are fictional and
-          cannot be redeemed. Live offers will be
-          available after backend integration.
+          Student offers sourced from studentoffers.co.
+          Availability and terms are set by each merchant.
         </p>
       </div>
     </main>

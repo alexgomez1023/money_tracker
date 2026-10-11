@@ -3,6 +3,8 @@
 
 import { useEffect, useState } from "react";
 import Icon from "@/components/ui/Icon";
+import Skeleton from "@/components/ui/Skeleton";
+import { getAccounts, getTransactions } from "@/lib/bank-data";
 
 type PlaidAccount = {
   account_id: string;
@@ -36,18 +38,11 @@ export default function BalanceCard() {
     async function loadFinances() {
       try {
         // Get account balances and transactions.
-        const [accountsResponse, transactionsResponse] =
+        const [accountsData, transactionsData] =
           await Promise.all([
-            fetch("/api/accounts", { cache: "no-store" }),
-            fetch("/api/transactions", { cache: "no-store" }),
+            getAccounts<PlaidAccount>(),
+            getTransactions<PlaidTransaction>(),
           ]);
-
-        if (!accountsResponse.ok || !transactionsResponse.ok) {
-          throw new Error("Unable to load Plaid data");
-        }
-
-        const accountsData = await accountsResponse.json();
-        const transactionsData = await transactionsResponse.json();
 
         const accounts: PlaidAccount[] = accountsData.accounts ?? [];
         const transactions: PlaidTransaction[] =
@@ -140,7 +135,7 @@ export default function BalanceCard() {
 
       <h2 className="mt-5 text-4xl font-bold tracking-tight md:text-5xl">
         {loading
-          ? "Loading..."
+          ? <Skeleton className="h-10 w-56 !bg-white/20 md:h-12" />
           : error
           ? "Unavailable"
           : showBalance
@@ -163,7 +158,7 @@ export default function BalanceCard() {
           </p>
           <p className="mt-2 text-lg font-semibold">
             {loading
-              ? "Loading..."
+              ? <Skeleton className="h-7 w-24 !bg-white/20" />
               : error
               ? "—"
               : showBalance
@@ -178,7 +173,7 @@ export default function BalanceCard() {
           </p>
           <p className="mt-2 text-lg font-semibold">
             {loading
-              ? "Loading..."
+              ? <Skeleton className="h-7 w-24 !bg-white/20" />
               : error
               ? "—"
               : showBalance

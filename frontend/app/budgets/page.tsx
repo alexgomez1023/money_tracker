@@ -10,13 +10,17 @@ import {
 } from "@/lib/budget-storage";
 import {
   calculatePlaidBudgets,
+  getCurrentMonth,
   type SpendingTransaction,
 } from "@/lib/plaid-spending";
 import Card from "@/components/ui/Card";
+import Skeleton from "@/components/ui/Skeleton";
+import { getTransactions } from "@/lib/bank-data";
 
 export default function BudgetsPage() {
   const [budgets, setBudgets] = useState<Budget[]>(initialBudgets);
   const [transactions, setTransactions] = useState<SpendingTransaction[]>([]);
+  const [month, setMonth] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -44,16 +48,9 @@ export default function BudgetsPage() {
   useEffect(() => {
     async function loadTransactions() {
       try {
-        const response = await fetch("/api/transactions", {
-          cache: "no-store",
-        });
+        const data = await getTransactions<SpendingTransaction>();
 
-        if (!response.ok) {
-          throw new Error("Unable to load transactions");
-        }
-
-        const data = await response.json();
-
+        setMonth(getCurrentMonth());
         setTransactions(data.transactions ?? []);
       } catch {
         setError("Unable to load Plaid spending. Connect your bank first.");
@@ -66,7 +63,7 @@ export default function BudgetsPage() {
   }, []);
 
   // Combine Plaid spending with saved budget limits.
-  const liveBudgets = calculatePlaidBudgets(budgets, transactions);
+  const liveBudgets = calculatePlaidBudgets(budgets, transactions, month);
 
   const totalBudget = liveBudgets.reduce(
     (sum, budget) => sum + budget.limit,
@@ -134,13 +131,6 @@ export default function BudgetsPage() {
           </p>
         </header>
 
-        {/* Loading and error messages */}
-        {loading && (
-          <p className="mb-4 text-sm text-muted">
-            Loading Plaid spending...
-          </p>
-        )}
-
         {error && (
           <p className="mb-4 text-sm text-accent">
             {error}
@@ -171,7 +161,9 @@ export default function BudgetsPage() {
                   : "text-secondary"
               }`}
             >
-              {loading || error ? (
+              {loading ? (
+                <Skeleton className="h-7 w-24" />
+              ) : error ? (
                 "—"
               ) : (
                 <>
@@ -191,9 +183,13 @@ export default function BudgetsPage() {
             </h2>
 
             <span className="text-sm font-semibold text-muted">
-              {loading || error
-                ? "—"
-                : `$${totalSpent.toFixed(2)} spent`}
+              {loading ? (
+                <Skeleton className="h-4 w-24" />
+              ) : error ? (
+                "—"
+              ) : (
+                `$${totalSpent.toFixed(2)} spent`
+              )}
             </span>
           </div>
 
@@ -218,7 +214,9 @@ export default function BudgetsPage() {
           </div>
 
           <p className="mt-3 text-xs text-muted">
-            {loading || error
+            {loading ? (
+              <Skeleton className="h-3 w-48" />
+            ) : error
               ? "Waiting for Plaid spending data"
               : totalBudget > 0
                 ? `${Math.round(
@@ -253,9 +251,13 @@ export default function BudgetsPage() {
                       </h3>
 
                       <p className="mt-1 text-xs text-muted">
-                        {loading || error
-                          ? "Spending unavailable"
-                          : `$${budget.spent.toFixed(2)} spent`}
+                        {loading ? (
+                          <Skeleton className="h-3 w-20" />
+                        ) : error ? (
+                          "Spending unavailable"
+                        ) : (
+                          `$${budget.spent.toFixed(2)} spent`
+                        )}
                       </p>
                     </div>
 
@@ -298,9 +300,13 @@ export default function BudgetsPage() {
 
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <p className="text-xs text-muted">
-                      {loading || error
-                        ? "—"
-                        : `${Math.round(percentage)}% used`}
+                      {loading ? (
+                        <Skeleton className="h-3 w-14" />
+                      ) : error ? (
+                        "—"
+                      ) : (
+                        `${Math.round(percentage)}% used`
+                      )}
                     </p>
 
                     {!loading && !error && (
@@ -377,7 +383,12 @@ export default function BudgetsPage() {
             </p>
 
             <p className="mt-2 text-sm leading-relaxed text-foreground">
-              {loading || error
+              {loading ? (
+                <>
+                  <Skeleton className="h-4 w-full !bg-white" />
+                  <Skeleton className="mt-2 h-4 w-2/3 !bg-white" />
+                </>
+              ) : error
                 ? "Connect your bank to view spending insights."
                 : hasOverspending
                   ? "One or more categories are over budget. Review your spending and adjust your limits if needed."

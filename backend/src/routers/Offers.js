@@ -8,7 +8,10 @@ const router = Router();
 
 // GET /offers?category=shopping
 router.get("/", async (req, res) => {
-  const [offers, total] = await getOffers();
+  const category =
+    typeof req.query.category === "string" ? req.query.category.trim() : "";
+
+  const [offers, total] = await getOffers(category);
 
   res.json({ offers, total });
 });

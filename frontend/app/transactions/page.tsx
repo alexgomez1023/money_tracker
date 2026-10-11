@@ -4,6 +4,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Icon from "@/components/ui/Icon";
 import Card from "@/components/ui/Card";
+import { SkeletonRows } from "@/components/ui/Skeleton";
+import { getTransactions } from "@/lib/bank-data";
 
 type PlaidTransaction = {
   transaction_id: string;
@@ -48,15 +50,7 @@ export default function TransactionsPage() {
   useEffect(() => {
     async function loadTransactions() {
       try {
-        const response = await fetch("/api/transactions", {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to load transactions");
-        }
-
-        const data = await response.json();
+        const data = await getTransactions<PlaidTransaction>();
         setTransactions(data.transactions ?? []);
       } catch {
         setError("Unable to load transactions. Connect a bank first.");
@@ -230,9 +224,7 @@ export default function TransactionsPage() {
 
           <Card className="!p-0">
             {loading ? (
-              <p className="p-5 text-sm text-muted">
-                Loading transactions...
-              </p>
+              <SkeletonRows count={6} />
             ) : error ? (
               <p className="p-5 text-sm text-muted">
                 {error}

@@ -11,6 +11,7 @@ import {
   saveSavingsGoals,
   type SavingsGoal,
 } from "@/lib/plaid-savings";
+import Skeleton from "@/components/ui/Skeleton";
 
 export default function SavingsPage() {
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
@@ -198,7 +199,13 @@ export default function SavingsPage() {
             </p>
 
             <p className="mt-3 text-xl font-bold text-primary sm:text-2xl">
-              {loading || error ? "—" : formatMoney(balance)}
+              {loading ? (
+                <Skeleton className="h-7 w-28" />
+              ) : error ? (
+                "—"
+              ) : (
+                formatMoney(balance)
+              )}
             </p>
           </Card>
 
@@ -208,7 +215,13 @@ export default function SavingsPage() {
             </p>
 
             <p className="mt-3 text-xl font-bold text-secondary sm:text-2xl">
-              {loading || error ? "—" : formatMoney(available)}
+              {loading ? (
+                <Skeleton className="h-7 w-28" />
+              ) : error ? (
+                "—"
+              ) : (
+                formatMoney(available)
+              )}
             </p>
           </Card>
         </div>
@@ -221,7 +234,13 @@ export default function SavingsPage() {
             </h2>
 
             <span className="text-sm font-semibold text-secondary">
-              {loading || error ? "—" : `${Math.round(overallProgress)}%`}
+              {loading ? (
+                <Skeleton className="h-4 w-10" />
+              ) : error ? (
+                "—"
+              ) : (
+                `${Math.round(overallProgress)}%`
+              )}
             </span>
           </div>
 
@@ -235,7 +254,9 @@ export default function SavingsPage() {
           </div>
 
           <p className="mt-3 text-xs text-muted">
-            {loading || error
+            {loading ? (
+              <Skeleton className="h-3 w-56" />
+            ) : error
               ? "Waiting for connected account data"
               : `${formatMoney(totalAllocated)} allocated toward ${formatMoney(totalTarget)} in goals`}
           </p>
@@ -532,7 +553,12 @@ export default function SavingsPage() {
           </h2>
 
           <p className="mt-2 text-sm leading-relaxed text-foreground">
-            {loading || error
+            {loading ? (
+              <>
+                <Skeleton className="h-4 w-full !bg-white" />
+                <Skeleton className="mt-2 h-4 w-2/3 !bg-white" />
+              </>
+            ) : error
               ? "Connect your savings account to view your progress."
               : totalAllocated > balance
                 ? "Your allocations exceed your current savings balance. Review your goal allocations."

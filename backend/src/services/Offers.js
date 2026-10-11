@@ -1,3 +1,6 @@
+import { CATEGORY_KEYWORDS } from "./categoryKeywords.js";
+import { syncUserTransactions } from "./Plaid.js";
+
 import { prisma } from "../db.js";
 
 const OFFERS_URL = "https://www.studentoffers.co/api/offers";
@@ -22,8 +25,47 @@ export async function fetchStudentOffers() {
     }));
 }
 
+const DEFAULT_CATEGORY = "other";
+
+// Lowercases the text and turns everything that isn't a letter or digit into a space
+function toWords(text) {
+  let words = " ";
+
+  for (const char of text.toLowerCase()) {
+    const isLetter = char >= "a" && char <= "z";
+    const isDigit = char >= "0" && char <= "9";
+
+    words += isLetter || isDigit ? char : " ";
+  }
+
+  return words + " ";
+}
+
+// Picks the category with the most keyword hits in the offer's name, offer text and description
 function getCategory(object) {
-  return "N/A";
+  const text = toWords(
+    `${object.name} ${object.offer} ${object.description ?? ""}`,
+  );
+
+  let best = DEFAULT_CATEGORY;
+  let bestHits = 0;
+
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    let hits = 0;
+
+    for (const keyword of keywords) {
+      if (text.includes(` ${keyword} `)) {
+        hits++;
+      }
+    }
+
+    if (hits > bestHits) {
+      best = category;
+      bestHits = hits;
+    }
+  }
+
+  return best;
 }
 
 // Inserts new offers and updates existing ones (matched on externalId), so it is safe to rerun
@@ -43,11 +85,21 @@ export async function syncOffers() {
   return { synced: offers.length };
 }
 
-export async function getOffers() {
+// Returns every offer, or only the ones in the given category
+export async function getOffers(category) {
+  const where = category ? { category } : {};
+
   const [offers, total] = await Promise.all([
     prisma.offer.findMany({
+      where,
       orderBy: { name: "asc" },
-      select: { id: true, name: true, offer: true, description: true },
+      select: {
+        id: true,
+        name: true,
+        offer: true,
+        description: true,
+        category: true,
+      },
     }),
     prisma.offer.count({ where }),
   ]);
@@ -56,7 +108,7 @@ export async function getOffers() {
 }
 
 // Finds offers whose name contains the given name, plus names that sound close to it (typos like "spotfy")
-export async function returnOffers(name, product, price) {
+export async function returnOffers(name) {
   const search = (name ?? "").trim();
 
   if (search === "") {
@@ -81,4 +133,79 @@ export async function returnOffers(name, product, price) {
   `;
 
   return offers;
+}
+
+const OFFERS_JOB_INTERVAL_MS = 60 * 60 * 1000;
+
+// Refreshes the offer list and each user's transactions, then looks up offers for the merchants
+// on transactions we saved within the last job interval
+export async function findOffersForUsers() {
+  const since = new Date(Date.now() - OFFERS_JOB_INTERVAL_MS);
+
+  try {
+    await syncOffers();
+  } catch (err) {
+    console.error("Offers sync failed, using saved offers:", err.message);
+  }
+
+  const users = await prisma.user.findMany({
+    where: { plaidItems: { some: {} } },
+    select: { id: true },
+  });
+
+  const results = [];
+
+  for (const user of users) {
+    try {
+      await syncUserTransactions(user.id);
+    } catch (err) {
+      console.error(
+        `Transaction sync failed for ${user.id}, using saved transactions:`,
+        err.response?.data?.error_message ?? err.message,
+      );
+    }
+
+    const merchants = await prisma.transaction.findMany({
+      where: {
+        account: { item: { userId: user.id } },
+        merchantName: { not: null },
+        createdAt: { gte: since },
+      },
+      distinct: ["merchantName"],
+      select: { merchantName: true },
+    });
+
+    for (const { merchantName } of merchants) {
+      const offers = await returnOffers(merchantName);
+
+      if (offers.length > 0) {
+        results.push({ userId: user.id, merchantName, offers });
+      }
+    }
+  }
+
+  return results;
+}
+
+export async function runOffersJob() {
+  console.log("Running Cron Job...");
+  try {
+    const results = await findOffersForUsers();
+
+    for (const { userId, merchantName, offers } of results) {
+      console.log(
+        `Offers for ${userId} at ${merchantName}:`,
+        offers.map((o) => o.name),
+      );
+    }
+  } catch (err) {
+    console.error("Offers job failed:", err);
+  }
+}
+
+// Runs the offer lookup at startup, then once an hour for as long as the server is up
+export function startOffersJob() {
+  runOffersJob();
+
+  setInterval(runOffersJob, OFFERS_JOB_INTERVAL_MS);
 }
