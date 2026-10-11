@@ -1,18 +1,41 @@
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import Card from "@/components/ui/Card";
 import { authFetch } from "@/lib/auth";
-import { loadBudgets } from "@/lib/budget-storage";
+import {
+  loadBudgets,
+  saveBudgetLimits,
+} from "@/lib/budget-storage";
 import { getSavingsGoals } from "@/lib/plaid-savings";
+
+type ProposedBudget = {
+  category: string;
+  limit: number;
+};
+
+type ProposedPlan = {
+  budgets: ProposedBudget[];
+};
 
 type Message = {
   id: number;
   role: "user" | "assistant";
   content: string;
+  proposedPlan?: ProposedPlan | null;
+  planStatus?: "idle" | "applying" | "applied" | "error";
 };
 
+const BUDGET_CATEGORIES = [
+  "Food & Drink",
+  "Shopping",
+  "Transportation",
+  "Other",
+];
+
 const suggestedQuestions = [
+  "Create a monthly budget based on my spending",
   "Review my monthly budgets",
   "How are my savings goals progressing?",
   "Am I spending more than I earn?",
@@ -24,18 +47,71 @@ const initialMessages: Message[] = [
     id: 1,
     role: "assistant",
     content:
-      "Hi! I'm your AI Finance Assistant. I can help you review your spending, track budgets, understand your account balances, and work toward your savings goals. What would you like to discuss?",
+      "Hi! I'm your AI Finance Assistant. I can help you review your spending, track budgets, understand your account balances, and work toward your savings goals. I can also create a monthly budget plan for you to review and apply. What would you like to discuss?",
   },
 ];
 
+function isValidProposedPlan(value: unknown): value is ProposedPlan {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const plan = value as { budgets?: unknown };
+
+  if (
+    !Array.isArray(plan.budgets) ||
+    plan.budgets.length === 0 ||
+    plan.budgets.length > BUDGET_CATEGORIES.length
+  ) {
+    return false;
+  }
+
+  const seen = new Set<string>();
+
+  for (const item of plan.budgets) {
+    if (!item || typeof item !== "object") {
+      return false;
+    }
+
+    const budget = item as {
+      category?: unknown;
+      limit?: unknown;
+    };
+
+    if (
+      typeof budget.category !== "string" ||
+      !BUDGET_CATEGORIES.includes(budget.category) ||
+      seen.has(budget.category)
+    ) {
+      return false;
+    }
+
+    if (
+      typeof budget.limit !== "number" ||
+      !Number.isFinite(budget.limit) ||
+      budget.limit <= 0 ||
+      budget.limit > 1000000
+    ) {
+      return false;
+    }
+
+    seen.add(budget.category);
+  }
+
+  return true;
+}
+
 export default function AssistantPage() {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [messages, setMessages] =
+    useState<Message[]>(initialMessages);
+
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const nextIdRef = useRef(2);
   const sendingRef = useRef(false);
+  const applyingRef = useRef(new Set<number>());
   const chatVersionRef = useRef(0);
 
   useEffect(() => {
@@ -53,9 +129,16 @@ export default function AssistantPage() {
   async function sendMessage(messageText?: string) {
     const question = (messageText ?? input).trim();
 
-    if (!question || sendingRef.current) return;
+    if (
+      !question ||
+      question.length > 1000 ||
+      sendingRef.current
+    ) {
+      return;
+    }
 
     sendingRef.current = true;
+
     const chatVersion = chatVersionRef.current;
 
     const userMessage: Message = {
@@ -64,38 +147,47 @@ export default function AssistantPage() {
       content: question,
     };
 
-    setMessages((current) => [...current, userMessage]);
+    setMessages((current) => [
+      ...current,
+      userMessage,
+    ]);
+
     setInput("");
     setIsTyping(true);
 
     try {
       // Read the user's latest saved budget limits.
-      const budgets = (await loadBudgets()).map((budget) => ({
-        category: budget.category,
-        limit: budget.limit,
-      }));
+      const budgets = (await loadBudgets()).map(
+        (budget) => ({
+          category: budget.category,
+          limit: budget.limit,
+        })
+      );
 
       // Read the user's latest savings goals.
       const savingsGoals = getSavingsGoals();
 
-      // Send dashboard preferences with the question.
-      const response = await authFetch("/api/finance-chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: question,
-          budgets,
-          savingsGoals,
-        }),
-      });
+      const response = await authFetch(
+        "/api/finance-chat",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: question,
+            budgets,
+            savingsGoals,
+          }),
+        }
+      );
 
-      const contentType = response.headers.get("content-type") || "";
+      const contentType =
+        response.headers.get("content-type") || "";
 
       if (!contentType.includes("application/json")) {
         throw new Error(
-          "The finance assistant returned an unexpected response. Check that the backend is running.",
+          "The finance assistant returned an unexpected response. Check that the backend is running."
         );
       }
 
@@ -105,25 +197,41 @@ export default function AssistantPage() {
         throw new Error(
           typeof data.error === "string"
             ? data.error
-            : "Unable to answer your question.",
+            : "Unable to answer your question."
         );
       }
 
       // Ignore responses from a previous chat.
-      if (chatVersion !== chatVersionRef.current) return;
+      if (chatVersion !== chatVersionRef.current) {
+        return;
+      }
+
+      const proposedPlan = isValidProposedPlan(
+        data.proposedPlan
+      )
+        ? data.proposedPlan
+        : null;
 
       const assistantMessage: Message = {
         id: nextIdRef.current++,
         role: "assistant",
         content:
-          typeof data.reply === "string" && data.reply.trim()
+          typeof data.reply === "string" &&
+          data.reply.trim()
             ? data.reply
             : "The assistant returned an empty response.",
+        proposedPlan,
+        planStatus: "idle",
       };
 
-      setMessages((current) => [...current, assistantMessage]);
+      setMessages((current) => [
+        ...current,
+        assistantMessage,
+      ]);
     } catch (error) {
-      if (chatVersion !== chatVersionRef.current) return;
+      if (chatVersion !== chatVersionRef.current) {
+        return;
+      }
 
       const errorMessage: Message = {
         id: nextIdRef.current++,
@@ -134,12 +242,117 @@ export default function AssistantPage() {
             : "Something went wrong. Please try again.",
       };
 
-      setMessages((current) => [...current, errorMessage]);
+      setMessages((current) => [
+        ...current,
+        errorMessage,
+      ]);
     } finally {
       if (chatVersion === chatVersionRef.current) {
         sendingRef.current = false;
         setIsTyping(false);
       }
+    }
+  }
+
+  async function applyPlan(messageId: number) {
+    if (applyingRef.current.has(messageId)) {
+      return;
+    }
+
+    const message = messages.find(
+      (item) => item.id === messageId
+    );
+
+    if (
+      !message ||
+      !isValidProposedPlan(message.proposedPlan) ||
+      message.planStatus === "applying" ||
+      message.planStatus === "applied"
+    ) {
+      return;
+    }
+
+    const proposedBudgets =
+      message.proposedPlan.budgets;
+
+    const chatVersion = chatVersionRef.current;
+
+    applyingRef.current.add(messageId);
+
+    setMessages((current) =>
+      current.map((item) =>
+        item.id === messageId
+          ? {
+              ...item,
+              planStatus: "applying",
+            }
+          : item
+      )
+    );
+
+    try {
+      // Send only the proposed categories.
+      // The existing backend preserves all other limits.
+      const response = await authFetch(
+        "/api/budgets",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            budgets: proposedBudgets,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Unable to save the budget plan."
+        );
+      }
+
+      // Refresh other budget views.
+      // The existing storage helper broadcasts this event.
+      // Here we trigger it directly because this request
+      // saves only the proposed categories.
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new Event("budgets-updated")
+        );
+      }
+
+      if (chatVersion !== chatVersionRef.current) {
+        return;
+      }
+
+      setMessages((current) =>
+        current.map((item) =>
+          item.id === messageId
+            ? {
+                ...item,
+                planStatus: "applied",
+              }
+            : item
+        )
+      );
+    } catch {
+      if (chatVersion !== chatVersionRef.current) {
+        return;
+      }
+
+      setMessages((current) =>
+        current.map((item) =>
+          item.id === messageId
+            ? {
+                ...item,
+                planStatus: "error",
+              }
+            : item
+        )
+      );
+    } finally {
+      applyingRef.current.delete(messageId);
     }
   }
 
@@ -158,14 +371,16 @@ export default function AssistantPage() {
         {/* Header */}
         <header className="mb-6 flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm text-muted">Your Financial Companion</p>
+            <p className="text-sm text-muted">
+              Your Financial Companion
+            </p>
 
             <h1 className="mt-1 text-2xl font-bold tracking-tight text-primary">
               AI Finance Assistant
             </h1>
 
             <p className="mt-2 text-sm text-muted">
-              Ask questions about your money.
+              Ask questions about your money or create a budget plan.
             </p>
           </div>
 
@@ -188,17 +403,95 @@ export default function AssistantPage() {
               <div
                 key={message.id}
                 className={`flex ${
-                  message.role === "user" ? "justify-end" : "justify-start"
+                  message.role === "user"
+                    ? "justify-end"
+                    : "justify-start"
                 }`}
               >
                 <div
-                  className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                     message.role === "user"
                       ? "bg-primary text-white"
                       : "bg-surface-blue text-foreground"
                   }`}
                 >
-                  {message.content}
+                  <p className="whitespace-pre-wrap">
+                    {message.content}
+                  </p>
+
+                  {/* AI Budget Proposal */}
+                  {message.role === "assistant" &&
+                    message.proposedPlan && (
+                      <div className="mt-4 rounded-xl border border-border-custom bg-white p-4">
+                        <h3 className="font-bold text-primary">
+                          Suggested Monthly Budget
+                        </h3>
+
+                        <p className="mt-1 text-xs text-muted">
+                          Review these limits before saving them
+                          to your account.
+                        </p>
+
+                        <div className="mt-4 space-y-3">
+                          {message.proposedPlan.budgets.map(
+                            (budget) => (
+                              <div
+                                key={budget.category}
+                                className="flex items-center justify-between gap-4"
+                              >
+                                <span className="text-sm text-foreground">
+                                  {budget.category}
+                                </span>
+
+                                <span className="text-sm font-semibold text-primary">
+                                  $
+                                  {budget.limit.toFixed(2)}
+                                </span>
+                              </div>
+                            )
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            applyPlan(message.id)
+                          }
+                          disabled={
+                            message.planStatus ===
+                              "applying" ||
+                            message.planStatus ===
+                              "applied"
+                          }
+                          className="mt-4 w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {message.planStatus ===
+                          "applying"
+                            ? "Applying Plan..."
+                            : message.planStatus ===
+                                "applied"
+                              ? "Plan Applied"
+                              : "Apply Plan"}
+                        </button>
+
+                        {message.planStatus ===
+                          "applied" && (
+                          <p className="mt-3 text-center text-xs font-semibold text-secondary">
+                            Budget updated successfully!
+                            Your new limits are available
+                            in the Budgets tab.
+                          </p>
+                        )}
+
+                        {message.planStatus ===
+                          "error" && (
+                          <p className="mt-3 text-center text-xs text-accent">
+                            Unable to save your budget.
+                            Please try again.
+                          </p>
+                        )}
+                      </div>
+                    )}
                 </div>
               </div>
             ))}
@@ -245,14 +538,19 @@ export default function AssistantPage() {
           }}
           className="mt-5 flex items-end gap-3 rounded-2xl border border-border-custom bg-white p-3 shadow-sm"
         >
-          <label htmlFor="chat-input" className="sr-only">
+          <label
+            htmlFor="chat-input"
+            className="sr-only"
+          >
             Ask a financial question
           </label>
 
           <textarea
             id="chat-input"
             value={input}
-            onChange={(event) => setInput(event.target.value)}
+            onChange={(event) =>
+              setInput(event.target.value)
+            }
             onKeyDown={(event) => {
               if (
                 event.key === "Enter" &&
@@ -265,6 +563,7 @@ export default function AssistantPage() {
             }}
             placeholder="Ask about your finances..."
             rows={2}
+            maxLength={1000}
             className="max-h-32 min-h-12 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-foreground outline-none placeholder:text-muted"
           />
 
@@ -278,8 +577,8 @@ export default function AssistantPage() {
         </form>
 
         <p className="mt-3 text-center text-xs text-muted">
-          Financial information is for educational purposes only, not
-          personalized financial advice.
+          Financial information is for educational purposes only,
+          not personalized financial advice.
         </p>
       </div>
     </main>
