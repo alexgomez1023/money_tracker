@@ -7,6 +7,7 @@ import Link from "next/link";
 import Card from "@/components/ui/Card";
 import CopyButton from "@/components/ui/CopyButton";
 import PhoneDisplay from "@/components/ui/PhoneDisplay";
+import BrandPanel from "@/components/auth/BrandPanel";
 import PhoneField, {
   getPhoneError,
 } from "@/components/auth/PhoneField";
@@ -77,11 +78,17 @@ export default function SignupPage() {
 
   if (session) {
     return (
-      <main className="min-h-screen bg-background text-foreground">
-        <div className="mx-auto max-w-md px-5 pb-12 pt-12 sm:px-8">
+      <main className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-2">
+        <BrandPanel />
+
+        <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 py-12 sm:px-8">
 
           {/* Page Header */}
           <header className="mb-8">
+            <p className="mb-8 font-display text-xl font-bold tracking-tight text-primary lg:hidden">
+              B2B
+            </p>
+
             <p className="text-sm text-muted">
               Account created
             </p>
@@ -176,13 +183,19 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-md px-5 pb-12 pt-12 sm:px-8">
+    <main className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-2">
+      <BrandPanel />
+
+      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 py-12 sm:px-8">
 
         {/* Page Header */}
         <header className="mb-8">
-          <p className="text-sm text-muted">
+          <p className="mb-8 font-display text-xl font-bold tracking-tight text-primary lg:hidden">
             B2B
+          </p>
+
+          <p className="text-sm text-muted">
+            Sign up
           </p>
 
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-primary">
@@ -194,7 +207,7 @@ export default function SignupPage() {
           </p>
         </header>
 
-        <Card>
+        <Card className="sm:p-6">
           <form
             noValidate
             onSubmit={(event) => {
