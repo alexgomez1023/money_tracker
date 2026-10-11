@@ -1,10 +1,14 @@
+
 "use client";
 
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+
 import Icon, { type IconName } from "@/components/ui/Icon";
 import { navigation } from "@/lib/mock-data";
+import { useSession } from "@/lib/auth";
 import BottomNav from "./BottomNav";
 
 type NavItem = {
@@ -13,7 +17,6 @@ type NavItem = {
   href: string;
 };
 
-// Pages only the desktop sidebar has room for. On phones they are reached from the dashboard and the profile icon.
 const secondaryNavigation: NavItem[] = [
   { label: "Savings", icon: "target", href: "/savings" },
   { label: "Connect Bank", icon: "wallet", href: "/connect-bank" },
@@ -53,13 +56,44 @@ interface AppShellProps {
   children: ReactNode;
 }
 
-// The app's navigation: a left sidebar on desktop and a bottom tab bar on phones and tablets.
 export default function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const session = useSession();
 
-  // The login and signup pages have no navigation.
-  if (pathname === "/login" || pathname === "/signup") {
+  // Wait until the browser has mounted before checking localStorage.
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isPublicPage =
+    pathname === "/login" || pathname === "/signup";
+
+  // Redirect visitors who are not signed in.
+  useEffect(() => {
+    if (!mounted) return;
+
+    if (!session && !isPublicPage) {
+      router.replace("/login");
+    }
+  }, [mounted, session, isPublicPage, router]);
+
+  // Login and signup pages never show dashboard navigation.
+  if (isPublicPage) {
     return <>{children}</>;
+  }
+
+  // Prevent protected content from appearing while checking login.
+  if (!mounted || !session) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-sm text-muted">
+          Checking your session...
+        </p>
+      </main>
+    );
   }
 
   return (
@@ -97,8 +131,10 @@ export default function AppShell({ children }: AppShellProps) {
         </nav>
       </aside>
 
+      {/* Dashboard content */}
       <div className="lg:pl-60">{children}</div>
 
+      {/* Mobile navigation */}
       <BottomNav />
     </>
   );
