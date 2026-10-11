@@ -10,9 +10,9 @@ const options = {
   location: process.env.GCP_LOCATION,
 };
 
-if (process.env.GCP_SA_KEY) {
+if (process.env.GCP_KEY) {
   options.googleAuthOptions = {
-    credentials: JSON.parse(process.env.GCP_SA_KEY),
+    credentials: JSON.parse(process.env.GCP_KEY),
   };
 }
 

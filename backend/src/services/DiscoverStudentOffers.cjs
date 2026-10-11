@@ -2,11 +2,20 @@
 const { GoogleGenAI } = require("@google/genai");
 
 async function discoverStudentOffers(merchants = []) {
-  const ai = new GoogleGenAI({
+  const options = {
     vertexai: true,
-    project: process.env.GOOGLE_CLOUD_PROJECT,
-    location: process.env.GOOGLE_CLOUD_LOCATION || "global",
-  });
+    project: process.env.GCP_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT,
+    location:
+      process.env.GCP_LOCATION || process.env.GOOGLE_CLOUD_LOCATION || "global",
+  };
+
+  if (process.env.GCP_KEY) {
+    options.googleAuthOptions = {
+      credentials: JSON.parse(process.env.GCP_KEY),
+    };
+  }
+
+  const ai = new GoogleGenAI(options);
 
   const prompt = `
 Find current student discounts available in the United States.
