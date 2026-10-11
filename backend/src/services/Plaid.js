@@ -56,10 +56,9 @@ function decryptToken(value) {
 
   decipher.setAuthTag(tag);
 
-  return Buffer.concat([
-    decipher.update(encrypted),
-    decipher.final(),
-  ]).toString("utf8");
+  return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString(
+    "utf8",
+  );
 }
 
 // Runs a Plaid request with the item's access token, and flags the item if the bank login expired
@@ -82,6 +81,7 @@ async function getUserItems(userId) {
   const items = await prisma.plaidItem.findMany({ where: { userId } });
 
   if (items.length === 0) {
+    console.log(userId);
     throw new HttpError(400, "No bank connected. Connect a bank first.");
   }
 

@@ -35,6 +35,14 @@ const nextConfig: NextConfig = {
         source: "/api/transactions",
         destination: "http://localhost:3001/transactions",
       },
+      {
+        source: "/api/offers",
+        destination: "http://localhost:3001/offers",
+      },
+      {
+        source: "/api/offers/:path*",
+        destination: "http://localhost:3001/offers/:path*",
+      },
     ];
   },
 };

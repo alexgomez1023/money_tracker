@@ -24,8 +24,89 @@ export async function fetchStudentOffers() {
     }));
 }
 
+const DEFAULT_CATEGORY = "other";
+
+// Words that point to a category. Each one is matched as a whole word, so "mac" does not match "pharmacy".
+const CATEGORY_KEYWORDS = {
+  tech: [
+    "mac", "macbook", "ipad", "iphone", "apple", "laptop", "laptops",
+    "computer", "computers", "software", "developer", "developers", "cloud",
+    "hosting", "domain", "domains", "api", "code", "coding", "app", "apps",
+    "tech", "microsoft", "github", "adobe", "samsung", "dell", "lenovo", "hp",
+    "ai", "vpn", "server", "servers", "database",
+  ],
+  entertainment: [
+    "music", "streaming", "movie", "movies", "tv", "video", "game", "games",
+    "gaming", "spotify", "hulu", "netflix", "podcast", "podcasts",
+    "audiobooks", "concerts", "tickets",
+  ],
+  food: [
+    "food", "meal", "meals", "coffee", "pizza", "restaurant", "restaurants",
+    "grocery", "groceries", "delivery", "drink", "drinks", "burger", "snacks",
+  ],
+  shopping: [
+    "clothing", "clothes", "fashion", "shoes", "apparel", "sneakers",
+    "sportswear", "beauty", "makeup", "skincare", "furniture", "jewelry",
+    "accessories", "nike", "adidas",
+  ],
+  travel: [
+    "travel", "flight", "flights", "hotel", "hotels", "airline", "airlines",
+    "train", "bus", "rail", "car rental", "rides", "trip", "trips", "luggage",
+  ],
+  education: [
+    "course", "courses", "learning", "textbook", "textbooks", "study",
+    "tutoring", "language", "languages", "certification", "exam", "exams",
+    "classes", "education", "research", "writing",
+  ],
+  health: [
+    "fitness", "gym", "health", "wellness", "meditation", "therapy",
+    "workout", "vitamins", "glasses", "contacts", "sleep",
+  ],
+  finance: [
+    "bank", "banking", "credit", "invest", "investing", "insurance", "budget",
+    "tax", "taxes", "loan", "loans", "finance",
+  ],
+};
+
+// Lowercases the text and turns everything that isn't a letter or digit into a space
+function toWords(text) {
+  let words = " ";
+
+  for (const char of text.toLowerCase()) {
+    const isLetter = char >= "a" && char <= "z";
+    const isDigit = char >= "0" && char <= "9";
+
+    words += isLetter || isDigit ? char : " ";
+  }
+
+  return words + " ";
+}
+
+// Picks the category with the most keyword hits in the offer's name, offer text and description
 function getCategory(object) {
-  return "N/A";
+  const text = toWords(
+    `${object.name} ${object.offer} ${object.description ?? ""}`,
+  );
+
+  let best = DEFAULT_CATEGORY;
+  let bestHits = 0;
+
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    let hits = 0;
+
+    for (const keyword of keywords) {
+      if (text.includes(` ${keyword} `)) {
+        hits++;
+      }
+    }
+
+    if (hits > bestHits) {
+      best = category;
+      bestHits = hits;
+    }
+  }
+
+  return best;
 }
 
 // Inserts new offers and updates existing ones (matched on externalId), so it is safe to rerun
@@ -45,13 +126,23 @@ export async function syncOffers() {
   return { synced: offers.length };
 }
 
-export async function getOffers() {
+// Returns every offer, or only the ones in the given category
+export async function getOffers(category) {
+  const where = category ? { category } : {};
+
   const [offers, total] = await Promise.all([
     prisma.offer.findMany({
+      where,
       orderBy: { name: "asc" },
-      select: { id: true, name: true, offer: true, description: true },
+      select: {
+        id: true,
+        name: true,
+        offer: true,
+        description: true,
+        category: true,
+      },
     }),
-    prisma.offer.count(),
+    prisma.offer.count({ where }),
   ]);
 
   return [offers, total];
