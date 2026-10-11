@@ -187,7 +187,7 @@ export async function syncUserTransactions(userId) {
 export async function createLinkToken(userId) {
   const response = await plaidClient.linkTokenCreate({
     user: { client_user_id: userId },
-    client_name: "Money Tracker",
+    client_name: "B2B",
     products: ["transactions"],
     country_codes: ["US"],
     language: "en",

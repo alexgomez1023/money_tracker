@@ -70,7 +70,7 @@ export default function AppShell({ children }: AppShellProps) {
           href="/"
           className="px-3 font-display text-xl font-bold tracking-tight text-primary"
         >
-          Money Tracker
+          B2B
         </Link>
 
         <nav

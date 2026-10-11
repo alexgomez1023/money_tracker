@@ -1,6 +1,6 @@
 # money_tracker
 
-Money Tracker App
+B2B App
 
 Hannah
 Alex

@@ -40,7 +40,7 @@ export default function TextField({
         aria-invalid={error ? true : undefined}
         aria-describedby={error || hint ? `${id}-note` : undefined}
         onChange={(event) => onChange(event.target.value)}
-        className={`w-full rounded-xl border bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:ring-2 ${
+        className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:ring-2 ${
           error
             ? "border-accent focus:border-accent focus:ring-accent/20"
             : "border-border-custom focus:border-secondary focus:ring-secondary/20"

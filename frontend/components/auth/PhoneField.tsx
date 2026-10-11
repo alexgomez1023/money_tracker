@@ -90,7 +90,7 @@ export default function PhoneField({
 
   const segmented = countryCode === SEGMENTED_CODE;
 
-  const boxClass = `w-full min-w-0 rounded-xl border bg-background py-3 text-sm text-foreground outline-none transition focus:ring-2 ${
+  const boxClass = `w-full min-w-0 rounded-xl border bg-white py-3 text-sm text-foreground outline-none transition focus:ring-2 ${
     error
       ? "border-accent focus:border-accent focus:ring-accent/20"
       : "border-border-custom focus:border-secondary focus:ring-secondary/20"

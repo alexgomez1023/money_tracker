@@ -82,7 +82,7 @@ async function parseMessage(space, message) {
 
     if (!user) {
       // await space.send(
-      //   "Sign up and verify your phone number in the Money Tracker app to use this.",
+      //   "Sign up and verify your phone number in the B2B app to use this.",
       // );
 
       return;

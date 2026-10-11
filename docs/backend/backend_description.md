@@ -1,6 +1,6 @@
-# Money Tracker Backend Overview
+# B2B Backend Overview
 
-This document describes how the Money Tracker backend is built: what it does, how the code is organized, which external services it talks to, and what is finished vs. still in progress.
+This document describes how the B2B backend is built: what it does, how the code is organized, which external services it talks to, and what is finished vs. still in progress.
 
 For the original requirements and the high-level architecture diagram, see [`backend_requirements.md`](backend_requirements.md) and [`system_design.md`](system_design.md) in this folder.
 
@@ -8,7 +8,7 @@ For the original requirements and the high-level architecture diagram, see [`bac
 
 ## What the backend does
 
-The backend is a Node.js / Express API that powers the Money Tracker app. It has five main jobs:
+The backend is a Node.js / Express API that powers the B2B app. It has five main jobs:
 
 1. **Accounts and auth.** Users sign up and log in with a phone number and password. The API issues short-lived JWT access tokens and long-lived refresh tokens. Signing up also registers the user with Photon and returns the iMessage number assigned to them.
 2. **iMessage assistant.** Users can text a personal finance assistant over iMessage. Incoming texts arrive through Photon (the `spectrum-ts` SDK). Gemini pulls out the store or product the user is asking about, the backend looks up matching student offers, and Gemini writes the reply. Every message is logged to the database.

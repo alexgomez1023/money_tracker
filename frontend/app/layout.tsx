@@ -18,7 +18,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Money Tracker",
+  title: "B2B",
   description:
     "Track your balances, budgets and savings goals, and find student offers that match your spending.",
 };
