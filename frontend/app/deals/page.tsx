@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
+import DiscoveredOffers from "@/components/dashboard/DiscoveredOffers";
 
 type Offer = {
   id: string;
@@ -149,6 +150,7 @@ export default function DealsPage() {
           </p>
         </div>
 
+<DiscoveredOffers />
         {/* Search and Filters */}
         <Card>
           <label
