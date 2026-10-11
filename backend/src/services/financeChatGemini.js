@@ -319,7 +319,12 @@ export async function answerFinancialQuestion(
         "Return ONLY a valid JSON object. " +
         "Do not include markdown code fences or text outside JSON. " +
         "The JSON object must contain these fields:\n" +
-        '{"reply":"Your conversational response","proposedPlan":null}\n\n' +
+        '{"reply":"Your conversational response","proposedPlan":null}\n' +
+        "The reply is shown to the user as plain text, so write it as plain text. " +
+        "Do not use Markdown in the reply: no asterisks for bold or italics, " +
+        "no # headings, no backticks, no tables, and no bullet symbols. " +
+        "Use short sentences and plain line breaks, " +
+        "and number the steps as 1. 2. 3. when you need a list.\n\n" +
         "BUDGET PLAN RULES:\n" +
         "If the user explicitly asks you to create, recommend, " +
         "or change monthly spending budgets, you may generate " +
@@ -354,7 +359,7 @@ export async function answerFinancialQuestion(
       // responseMimeType: "application/json",
 
       temperature: 0.3,
-      maxOutputTokens: 2048,
+      maxOutputTokens: 4096,
     },
   });
 

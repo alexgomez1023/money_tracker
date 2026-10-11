@@ -44,6 +44,9 @@ const suggestedQuestions = [
   "What should I prioritize financially?",
 ];
 
+// Each loading dot starts its bounce a little after the one before it.
+const TYPING_DOT_DELAYS = ["0s", "0.15s", "0.3s"];
+
 const initialMessages: Message[] = [
   {
     id: 1,
@@ -503,8 +506,26 @@ export default function AssistantPage() {
             {/* Loading Indicator */}
             {isTyping && (
               <div className="flex justify-start">
-                <div className="rounded-2xl bg-surface-blue px-4 py-3 text-sm text-muted">
-                  Analyzing your finances...
+                <div
+                  role="status"
+                  className="flex items-center gap-3 rounded-2xl bg-surface-blue px-4 py-3 text-sm text-muted"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="flex items-center gap-1"
+                  >
+                    {TYPING_DOT_DELAYS.map((delay) => (
+                      <span
+                        key={delay}
+                        style={{ animationDelay: delay }}
+                        className="flex h-4 items-end motion-safe:animate-bounce"
+                      >
+                        <span className="h-2 w-2 rounded-full bg-secondary" />
+                      </span>
+                    ))}
+                  </span>
+
+                  Analyzing your finances
                 </div>
               </div>
             )}
