@@ -4,8 +4,6 @@ export const EMPTY_PARSE = { name: null, product: null, price: null };
 
 const MODEL = "gemini-3.8-flash";
 
-import { GoogleGenAI } from "@google/genai";
-
 const options = {
   vertexai: true,
   project: process.env.GCP_PROJECT_ID,
