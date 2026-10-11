@@ -1,4 +1,6 @@
 
+import { authFetch, getSession } from "@/lib/auth";
+
 // How long a response is reused before the next caller triggers a new request.
 const SHARE_MS = 30 * 1000;
 
@@ -10,7 +12,7 @@ type SharedRequest = {
 const requests: Record<string, SharedRequest> = {};
 
 async function fetchJson(url: string) {
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await authFetch(url, { cache: "no-store" });
 
   if (!response.ok) {
     throw new Error(`Request to ${url} failed`);
@@ -22,7 +24,10 @@ async function fetchJson(url: string) {
 // Every component that asks for the same URL shares one request,
 // so a page with several bank widgets only hits the backend once.
 function getShared<T>(url: string, fresh: boolean): Promise<T> {
-  const existing = requests[url];
+  // Keyed by user as well, so one account never sees another's response.
+  const key = `${getSession()?.user.id ?? "guest"} ${url}`;
+
+  const existing = requests[key];
 
   if (
     !fresh &&
@@ -34,12 +39,12 @@ function getShared<T>(url: string, fresh: boolean): Promise<T> {
 
   const promise = fetchJson(url);
 
-  requests[url] = { promise, startedAt: Date.now() };
+  requests[key] = { promise, startedAt: Date.now() };
 
   // Failed requests are not reused, so the next caller tries again.
   promise.catch(() => {
-    if (requests[url]?.promise === promise) {
-      delete requests[url];
+    if (requests[key]?.promise === promise) {
+      delete requests[key];
     }
   });
 
@@ -57,7 +62,7 @@ export function getAccounts<T>(fresh = false) {
 
 // Call after linking or unlinking a bank so the next read is up to date.
 export function clearBankData() {
-  for (const url of Object.keys(requests)) {
-    delete requests[url];
+  for (const key of Object.keys(requests)) {
+    delete requests[key];
   }
 }

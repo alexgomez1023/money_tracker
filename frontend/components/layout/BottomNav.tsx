@@ -9,6 +9,11 @@ import { navigation } from "@/lib/mock-data";
 export default function BottomNav() {
   const pathname = usePathname();
 
+  // The login and signup pages have no navigation.
+  if (pathname === "/login" || pathname === "/signup") {
+    return null;
+  }
+
   return (
     <nav
       aria-label="Main navigation"

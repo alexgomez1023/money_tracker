@@ -1,5 +1,5 @@
 
-import Icon from "@/components/ui/Icon";
+import AccountButton from "@/components/layout/AccountButton";
 
 export default function AppHeader() {
   return (
@@ -14,9 +14,7 @@ export default function AppHeader() {
         </h1>
       </div>
 
-      <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border-custom bg-surface-blue text-primary">
-        <Icon name="user" size={21} />
-      </div>
+      <AccountButton />
     </header>
   );
 }
