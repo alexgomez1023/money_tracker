@@ -10,16 +10,22 @@ export type SpendingTransaction = {
   } | null;
 };
 
+// Returns the current month as "YYYY-MM".
+// Call it from an effect or event handler, not during render.
+export function getCurrentMonth() {
+  const now = new Date();
+
+  return `${now.getFullYear()}-${String(
+    now.getMonth() + 1
+  ).padStart(2, "0")}`;
+}
+
 // Calculate monthly spending from Plaid transactions.
 export function calculatePlaidBudgets(
   budgets: Budget[],
-  transactions: SpendingTransaction[]
+  transactions: SpendingTransaction[],
+  currentMonth: string
 ): Budget[] {
-  const now = new Date();
-
-  const currentMonth = `${now.getFullYear()}-${String(
-    now.getMonth() + 1
-  ).padStart(2, "0")}`;
 
   const spending: Record<string, number> = {
     "Food & Drink": 0,

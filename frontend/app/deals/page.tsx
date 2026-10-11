@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Card from "@/components/ui/Card";
+import Skeleton from "@/components/ui/Skeleton";
 
 type Offer = {
   id: string;
@@ -233,11 +234,24 @@ export default function DealsPage() {
 
         {/* Deals Grid */}
         {loading ? (
-          <Card className="mt-5">
-            <p className="py-10 text-center text-sm text-muted">
-              Loading offers...
-            </p>
-          </Card>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            {Array.from({ length: 6 }, (_, index) => (
+              <Card key={index}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="mt-3 h-5 w-36" />
+                  </div>
+
+                  <Skeleton className="h-11 w-11 !rounded-xl" />
+                </div>
+
+                <Skeleton className="mt-5 h-8 w-44" />
+                <Skeleton className="mt-3 h-4 w-full" />
+                <Skeleton className="mt-5 h-11 w-full !rounded-xl" />
+              </Card>
+            ))}
+          </div>
         ) : error ? (
           <Card className="mt-5">
             <p className="py-10 text-center text-sm text-muted">

@@ -1,3 +1,4 @@
+import { CATEGORY_KEYWORDS } from "./categoryKeywords.js";
 import { syncUserTransactions } from "./Plaid.js";
 
 import { prisma } from "../db.js";
@@ -25,48 +26,6 @@ export async function fetchStudentOffers() {
 }
 
 const DEFAULT_CATEGORY = "other";
-
-// Words that point to a category. Each one is matched as a whole word, so "mac" does not match "pharmacy".
-const CATEGORY_KEYWORDS = {
-  tech: [
-    "mac", "macbook", "ipad", "iphone", "apple", "laptop", "laptops",
-    "computer", "computers", "software", "developer", "developers", "cloud",
-    "hosting", "domain", "domains", "api", "code", "coding", "app", "apps",
-    "tech", "microsoft", "github", "adobe", "samsung", "dell", "lenovo", "hp",
-    "ai", "vpn", "server", "servers", "database",
-  ],
-  entertainment: [
-    "music", "streaming", "movie", "movies", "tv", "video", "game", "games",
-    "gaming", "spotify", "hulu", "netflix", "podcast", "podcasts",
-    "audiobooks", "concerts", "tickets",
-  ],
-  food: [
-    "food", "meal", "meals", "coffee", "pizza", "restaurant", "restaurants",
-    "grocery", "groceries", "delivery", "drink", "drinks", "burger", "snacks",
-  ],
-  shopping: [
-    "clothing", "clothes", "fashion", "shoes", "apparel", "sneakers",
-    "sportswear", "beauty", "makeup", "skincare", "furniture", "jewelry",
-    "accessories", "nike", "adidas",
-  ],
-  travel: [
-    "travel", "flight", "flights", "hotel", "hotels", "airline", "airlines",
-    "train", "bus", "rail", "car rental", "rides", "trip", "trips", "luggage",
-  ],
-  education: [
-    "course", "courses", "learning", "textbook", "textbooks", "study",
-    "tutoring", "language", "languages", "certification", "exam", "exams",
-    "classes", "education", "research", "writing",
-  ],
-  health: [
-    "fitness", "gym", "health", "wellness", "meditation", "therapy",
-    "workout", "vitamins", "glasses", "contacts", "sleep",
-  ],
-  finance: [
-    "bank", "banking", "credit", "invest", "investing", "insurance", "budget",
-    "tax", "taxes", "loan", "loans", "finance",
-  ],
-};
 
 // Lowercases the text and turns everything that isn't a letter or digit into a space
 function toWords(text) {
