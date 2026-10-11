@@ -1,4 +1,3 @@
-
 "use client";
 
 import Button from "@/components/ui/Button";
@@ -6,9 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Card from "@/components/ui/Card";
-import PhoneField, {
-  getPhoneError,
-} from "@/components/auth/PhoneField";
+import PhoneField, { getPhoneError } from "@/components/auth/PhoneField";
 import TextField from "@/components/auth/TextField";
 import Icon, { type IconName } from "@/components/ui/Icon";
 import { AuthError, login, type FieldErrors } from "@/lib/auth";
@@ -75,12 +72,9 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-2">
-
       {/* Brand Panel */}
       <aside className="hidden bg-primary p-12 text-white lg:flex lg:flex-col lg:justify-between">
-        <p className="font-display text-xl font-bold tracking-tight">
-          B2B
-        </p>
+        <p className="font-display text-xl font-bold tracking-tight">B2B</p>
 
         <div>
           <h2 className="max-w-md text-4xl font-bold tracking-tight">
@@ -88,8 +82,8 @@ export default function LoginPage() {
           </h2>
 
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-blue-100">
-            See your balances and budgets in one place, and text your
-            finance agent whenever you have a question.
+            See your balances and budgets in one place, and text your finance
+            agent whenever you have a question.
           </p>
         </div>
 
@@ -110,16 +104,13 @@ export default function LoginPage() {
       </aside>
 
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 py-12 sm:px-8">
-
         {/* Page Header */}
         <header className="mb-8">
           <p className="mb-8 font-display text-xl font-bold tracking-tight text-primary lg:hidden">
             B2B
           </p>
 
-          <p className="text-sm text-muted">
-            Log in
-          </p>
+          <p className="text-sm text-muted">Log in</p>
 
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-primary">
             Welcome back
@@ -163,12 +154,7 @@ export default function LoginPage() {
               </p>
             )}
 
-            <Button
-              type="submit"
-              disabled={submitting}
-              size="lg"
-              fullWidth
-            >
+            <Button type="submit" disabled={submitting} size="lg" fullWidth>
               {submitting ? "Logging in..." : "Log In"}
             </Button>
           </form>
