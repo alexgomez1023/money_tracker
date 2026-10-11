@@ -1,3 +1,4 @@
+import "./googleCredentials.js";
 import express from "express";
 import financeChatRouter from "./routers/FinanceChat.js";
 import authRouter from "./routers/Auth.js";

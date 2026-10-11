@@ -4,11 +4,21 @@ export const EMPTY_PARSE = { name: null, product: null, price: null };
 
 const MODEL = "gemini-3.8-flash";
 
-const gemini = new GoogleGenAI({
+import { GoogleGenAI } from "@google/genai";
+
+const options = {
   vertexai: true,
-  project: process.env.GOOGLE_CLOUD_PROJECT,
-  location: process.env.GOOGLE_CLOUD_LOCATION || "global",
-});
+  project: process.env.GCP_PROJECT_ID,
+  location: process.env.GCP_LOCATION,
+};
+
+if (process.env.GCP_SA_KEY) {
+  options.googleAuthOptions = {
+    credentials: JSON.parse(process.env.GCP_SA_KEY),
+  };
+}
+
+const gemini = new GoogleGenAI(options);
 
 const PARSE_SCHEMA = {
   type: "object",
