@@ -2,6 +2,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Skeleton from "@/components/ui/Skeleton";
+import { getAccounts } from "@/lib/bank-data";
 
 type BankAccount = {
   account_id: string;
@@ -22,21 +24,13 @@ export default function BankAccounts() {
   const [error, setError] = useState("");
 
   // Retrieve connected bank accounts from our backend.
-  const loadAccounts = useCallback(async () => {
+  const loadAccounts = useCallback(async (fresh = false) => {
     setLoading(true);
     setError("");
 
     try {
-      const response = await fetch("/api/accounts", {
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        throw new Error("Could not retrieve bank accounts");
-      }
-
-      const data = await response.json();
-      setAccounts(data.accounts);
+      const data = await getAccounts<BankAccount>(fresh);
+      setAccounts(data.accounts ?? []);
     } catch {
       setError("Unable to load accounts. Connect a bank first.");
       setAccounts([]);
@@ -67,7 +61,7 @@ export default function BankAccounts() {
 
         <button
           type="button"
-          onClick={loadAccounts}
+          onClick={() => loadAccounts(true)}
           disabled={loading}
           className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50"
         >
@@ -75,7 +69,20 @@ export default function BankAccounts() {
         </button>
       </div>
 
-      {loading && <p>Loading accounts...</p>}
+      {loading && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {Array.from({ length: 2 }, (_, index) => (
+            <div
+              key={index}
+              className="rounded-xl border p-5 shadow-sm"
+            >
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="mt-2 h-6 w-40" />
+              <Skeleton className="mt-4 h-8 w-32" />
+            </div>
+          ))}
+        </div>
+      )}
 
       {error && <p className="text-red-600">{error}</p>}
 
@@ -84,7 +91,7 @@ export default function BankAccounts() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {accounts.map((account) => (
+        {!loading && accounts.map((account) => (
           <div
             key={account.account_id}
             className="rounded-xl border p-5 shadow-sm"

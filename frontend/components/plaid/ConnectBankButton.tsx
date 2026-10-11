@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePlaidLink } from "react-plaid-link";
+import { clearBankData } from "@/lib/bank-data";
 
 export default function ConnectBankButton() {
   const [linkToken, setLinkToken] = useState<string | null>(null);
@@ -45,6 +46,8 @@ export default function ConnectBankButton() {
       });
 
       if (!response.ok) throw new Error("Exchange failed");
+
+      clearBankData();
 
       setMessage("Bank connected successfully!");
     } catch {

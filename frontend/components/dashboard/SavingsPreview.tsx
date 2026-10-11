@@ -12,6 +12,7 @@ import {
   getTotalAllocated,
   type SavingsGoal,
 } from "@/lib/plaid-savings";
+import Skeleton from "@/components/ui/Skeleton";
 
 export default function SavingsPreview() {
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
@@ -99,7 +100,7 @@ export default function SavingsPreview() {
 
         <p className="mt-2 text-xl font-bold text-primary">
           {loading
-            ? "Loading..."
+            ? <Skeleton className="h-7 w-28 !bg-white" />
             : error
               ? "Unavailable"
               : formatMoney(balance)}
@@ -123,7 +124,13 @@ export default function SavingsPreview() {
         </div>
 
         <span className="text-sm font-semibold text-secondary">
-          {loading || error ? "—" : `${Math.round(progress)}%`}
+          {loading ? (
+            <Skeleton className="h-4 w-10" />
+          ) : error ? (
+            "—"
+          ) : (
+            `${Math.round(progress)}%`
+          )}
         </span>
       </div>
 
@@ -144,7 +151,9 @@ export default function SavingsPreview() {
       </div>
 
       <p className="mt-3 text-xs text-muted">
-        {loading || error
+        {loading ? (
+          <Skeleton className="h-3 w-40" />
+        ) : error
           ? "Savings balance unavailable"
           : `${formatMoney(available)} available to allocate`}
       </p>

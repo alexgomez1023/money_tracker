@@ -2,6 +2,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Skeleton from "@/components/ui/Skeleton";
+import { getTransactions } from "@/lib/bank-data";
 
 type BankTransaction = {
   transaction_id: string;
@@ -23,20 +25,12 @@ export default function BankTransactions() {
   const [error, setError] = useState("");
 
   // Fetch transactions from our Express backend.
-  const loadTransactions = useCallback(async () => {
+  const loadTransactions = useCallback(async (fresh = false) => {
     setLoading(true);
     setError("");
 
     try {
-      const response = await fetch("/api/transactions", {
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to load transactions");
-      }
-
-      const data = await response.json();
+      const data = await getTransactions<BankTransaction>(fresh);
       setTransactions(data.transactions ?? []);
     } catch {
       setError("Unable to load transactions. Connect a bank first.");
@@ -75,7 +69,7 @@ export default function BankTransactions() {
 
         <button
           type="button"
-          onClick={loadTransactions}
+          onClick={() => loadTransactions(true)}
           disabled={loading}
           className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50"
         >
@@ -83,7 +77,13 @@ export default function BankTransactions() {
         </button>
       </div>
 
-      {loading && <p>Loading transactions...</p>}
+      {loading && (
+        <div className="space-y-3 rounded-xl border p-4">
+          {Array.from({ length: 5 }, (_, index) => (
+            <Skeleton key={index} className="h-5 w-full" />
+          ))}
+        </div>
+      )}
 
       {error && <p className="text-red-600">{error}</p>}
 
