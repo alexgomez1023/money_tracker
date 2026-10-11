@@ -1,4 +1,3 @@
-
 import { Router } from "express";
 
 import { prisma } from "../db.js";
@@ -15,9 +14,7 @@ const router = Router();
 // Returns all offers or filters by category.
 router.get("/", async (req, res) => {
   const category =
-    typeof req.query.category === "string"
-      ? req.query.category.trim()
-      : "";
+    typeof req.query.category === "string" ? req.query.category.trim() : "";
 
   const [offers, total] = await getOffers(category);
 
@@ -39,16 +36,17 @@ router.get("/personalized", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("Personalized offers failed:", err);
 
-    res.status(500).json({
-      error: "Unable to load personalized offers",
+    res.status(409).json({
+      error: "Unable to load personalized offers" + err,
     });
   }
 });
 
-
 // GET /offers/discover
 // Finds student discounts using Gemini, saves them, and caches them for 24 hours.
 router.get("/discover", requireAuth, async (req, res) => {
+  console.log("Entering discover");
+
   try {
     const userId = req.userId;
 
@@ -77,7 +75,7 @@ router.get("/discover", requireAuth, async (req, res) => {
       ...new Set(
         transactions
           .map((transaction) => transaction.merchantName?.trim())
-          .filter(Boolean)
+          .filter(Boolean),
       ),
     ].slice(0, 5);
 
@@ -102,8 +100,7 @@ router.get("/discover", requireAuth, async (req, res) => {
     const cacheIsFresh =
       savedOffers.length > 0 &&
       savedOffers.every(
-        (offer) =>
-          now - new Date(offer.discoveredAt).getTime() < cacheDuration
+        (offer) => now - new Date(offer.discoveredAt).getTime() < cacheDuration,
       );
 
     if (cacheIsFresh) {
@@ -140,9 +137,7 @@ router.get("/discover", requireAuth, async (req, res) => {
     }
 
     // 4. Save each discovered discount to MySQL.
-    const discoveredOffers = Array.isArray(result.offers)
-      ? result.offers
-      : [];
+    const discoveredOffers = Array.isArray(result.offers) ? result.offers : [];
 
     for (const offer of discoveredOffers) {
       if (!offer.name || !offer.offer || !offer.url) {
@@ -183,7 +178,7 @@ router.get("/discover", requireAuth, async (req, res) => {
     });
 
     console.log(
-      `[Offers] Saved ${discoveredOffers.length} AI discounts to MySQL`
+      `[Offers] Saved ${discoveredOffers.length} AI discounts to MySQL`,
     );
 
     return res.json({
@@ -195,12 +190,11 @@ router.get("/discover", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("Student offer discovery failed:", err);
 
-    return res.status(500).json({
-      error: "Unable to discover student offers",
+    return res.status(409).json({
+      error: "Unable to discover student offers" + err,
     });
   }
 });
-
 
 // GET /offers/:id
 // Returns details for one offer.

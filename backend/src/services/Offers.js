@@ -73,18 +73,24 @@ function getCategory(object) {
   return best;
 }
 
+// The whole offer list is saved in one transaction, which needs more than Prisma's default 5 seconds
+const SYNC_TIMEOUT_MS = 60 * 1000;
+
 // Inserts new offers and updates existing ones (matched on externalId), so it is safe to rerun
 export async function syncOffers() {
   const offers = await fetchStudentOffers();
 
   await prisma.$transaction(
-    offers.map(({ externalId, ...fields }) =>
-      prisma.offer.upsert({
-        where: { externalId },
-        create: { externalId, ...fields },
-        update: fields,
-      }),
-    ),
+    async (tx) => {
+      for (const { externalId, ...fields } of offers) {
+        await tx.offer.upsert({
+          where: { externalId },
+          create: { externalId, ...fields },
+          update: fields,
+        });
+      }
+    },
+    { timeout: SYNC_TIMEOUT_MS },
   );
 
   return { synced: offers.length };
@@ -125,6 +131,33 @@ export async function returnOffers(name) {
   const offers = await prisma.$queryRaw`
     SELECT id, externalId, name, offer, description, updatedAt, createdAt
     FROM Offer
+    WHERE name LIKE ${contains}
+      OR SOUNDEX(name) LIKE CONCAT(TRIM(TRAILING '0' FROM SOUNDEX(${search})), '%')
+    ORDER BY
+      CASE
+        WHEN name = ${search} THEN 0
+        WHEN name LIKE ${contains} THEN 1
+        ELSE 2
+      END,
+      name ASC
+    LIMIT 20
+  `;
+
+  return offers;
+}
+
+export async function returnPersonalizedOffers(name) {
+  const search = (name ?? "").trim();
+
+  if (search === "") {
+    return [];
+  }
+
+  const contains = "%" + search + "%";
+
+  const offers = await prisma.$queryRaw`
+    SELECT id, name, offer, description, url, eligibility, updatedAt, discoveredAt
+    FROM DiscoveredOffer
     WHERE name LIKE ${contains}
       OR SOUNDEX(name) LIKE CONCAT(TRIM(TRAILING '0' FROM SOUNDEX(${search})), '%')
     ORDER BY

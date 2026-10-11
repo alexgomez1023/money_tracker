@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Icon, { type IconName } from "@/components/ui/Icon";
 import { navigation } from "@/lib/mock-data";
+import BottomNav from "./BottomNav";
 
 type NavItem = {
   label: string;
@@ -98,33 +99,7 @@ export default function AppShell({ children }: AppShellProps) {
 
       <div className="lg:pl-60">{children}</div>
 
-      {/* Mobile Tab Bar */}
-      <nav
-        aria-label="Main navigation"
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-border-custom bg-white/95 px-2 pb-[max(12px,env(safe-area-inset-bottom))] shadow-lg backdrop-blur-md lg:hidden"
-      >
-        <div className="mx-auto flex max-w-lg items-center justify-around">
-          {navigation.map((item) => {
-            const active = pathname === item.href;
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={`flex min-w-0 flex-1 flex-col items-center gap-1 px-1 pb-1 pt-3 text-[11px] transition-colors ${
-                  active
-                    ? "font-semibold text-primary"
-                    : "font-medium text-muted hover:text-secondary"
-                }`}
-              >
-                <Icon name={item.icon} size={21} filled={active} />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+      <BottomNav />
     </>
   );
 }

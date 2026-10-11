@@ -81,9 +81,9 @@ async function parseMessage(space, message) {
       : null;
 
     if (!user) {
-      await space.send(
-        "Sign up and verify your phone number in the Money Tracker app to use this.",
-      );
+      // await space.send(
+      //   "Sign up and verify your phone number in the Money Tracker app to use this.",
+      // );
 
       return;
     }

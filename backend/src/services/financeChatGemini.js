@@ -343,14 +343,7 @@ export async function answerFinancialQuestion(
         "Do not generate savings goal actions yet; " +
         "savings goal creation will be implemented separately.",
 
-      responseMimeType:
-        "application/json" +
-        "Give concise, actionable recommendations. " +
-        "Do not provide personalized investment recommendations. " +
-        "Reply in plain text only. Do not use markdown: no asterisks, " +
-        "hash symbols, backticks or tables. Write money with a dollar " +
-        "sign, like $1,234.56. Use short paragraphs, and " +
-        "start each list item on its own line with a hyphen and a space.",
+      // responseMimeType: "application/json",
 
       temperature: 0.3,
       maxOutputTokens: 2048,

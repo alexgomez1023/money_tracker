@@ -4,7 +4,11 @@ export const EMPTY_PARSE = { name: null, product: null, price: null };
 
 const MODEL = "gemini-3.8-flash";
 
-const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const gemini = new GoogleGenAI({
+  vertexai: true,
+  project: process.env.GOOGLE_CLOUD_PROJECT,
+  location: process.env.GOOGLE_CLOUD_LOCATION || "global",
+});
 
 const PARSE_SCHEMA = {
   type: "object",

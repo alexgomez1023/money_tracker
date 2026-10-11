@@ -1,5 +1,5 @@
 import { parseMessage, askGemini } from "./gemini.js";
-import { returnOffers } from "./Offers.js";
+import { returnOffers, returnPersonalizedOffers } from "./Offers.js";
 import { EMPTY_PARSE } from "./gemini.js";
 
 export async function handleMessage(text) {
@@ -19,7 +19,12 @@ export async function handleMessage(text) {
     return { parsed, reply };
   }
 
-  const offers = await returnOffers(parsed.name, parsed.product, parsed.price);
+  let offers = await returnOffers(parsed.name, parsed.product, parsed.price);
+  // let offers = await returnPersonalizedOffers(parsed.name);
+
+  if (!offers || offers.length === 0) {
+    offers = await returnPersonalizedOffers(parsed.name);
+  }
 
   if (!offers || offers.length === 0) {
     reply = "Sorry, I was unable to generate any offers.";
