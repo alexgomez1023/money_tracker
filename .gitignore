@@ -9,6 +9,7 @@ lerna-debug.log*
 # Agents
 /.Agents
 /.claude
+skills-lock.json
 
 # Prisma
 /migrations
