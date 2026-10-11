@@ -1,6 +1,9 @@
 
 import type { NextConfig } from "next";
 
+// Set in frontend/.env
+const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:3001";
+
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["152.23.50.105"],
 
@@ -25,43 +28,43 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/auth/:path*",
-        destination: "http://localhost:3001/auth/:path*",
+        destination: `${BACKEND_URL}/auth/:path*`,
       },
       {
         source: "/api/budgets",
-        destination: "http://localhost:3001/budgets",
+        destination: `${BACKEND_URL}/budgets`,
       },
       {
         source: "/api/me",
-        destination: "http://localhost:3001/me",
+        destination: `${BACKEND_URL}/me`,
       },
       {
         source: "/api/plaid/:path*",
-        destination: "http://localhost:3001/plaid/:path*",
+        destination: `${BACKEND_URL}/plaid/:path*`,
       },
       {
         source: "/api/accounts",
-        destination: "http://localhost:3001/accounts",
+        destination: `${BACKEND_URL}/accounts`,
       },
       {
         source: "/api/transactions",
-        destination: "http://localhost:3001/transactions",
+        destination: `${BACKEND_URL}/transactions`,
       },
       {
         source: "/api/insights",
-        destination: "http://localhost:3001/insights",
+        destination: `${BACKEND_URL}/insights`,
       },
       {
         source: "/api/finance-chat",
-        destination: "http://localhost:3001/finance-chat",
+        destination: `${BACKEND_URL}/finance-chat`,
       },
       {
         source: "/api/offers",
-        destination: "http://localhost:3001/offers",
+        destination: `${BACKEND_URL}/offers`,
       },
       {
         source: "/api/offers/:path*",
-        destination: "http://localhost:3001/offers/:path*",
+        destination: `${BACKEND_URL}/offers/:path*`,
       },
     ];
   },
