@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -9,50 +8,75 @@ import { clearBankData } from "@/lib/bank-data";
 export default function ConnectBankButton() {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [connected, setConnected] = useState(false);
 
-  // Get a Link token from our backend.
-  useEffect(() => {
-    async function getLinkToken() {
-      try {
-        const response = await authFetch("/api/plaid/link-token", {
-          method: "POST",
-        });
+  const getLinkToken = useCallback(async () => {
+    setLoading(true);
+    setMessage("");
 
-        if (!response.ok) throw new Error("Failed to get link token");
+    try {
+      const response = await authFetch("/api/plaid/link-token", {
+        method: "POST",
+      });
 
-        const data = await response.json();
-        setLinkToken(data.link_token);
-      } catch {
-        setMessage("Could not initialize Plaid.");
+      if (!response.ok) {
+        const details = await response.text();
+        throw new Error(
+          `Plaid initialization failed (${response.status}): ${details}`,
+        );
       }
-    }
 
-    getLinkToken();
+      const data = await response.json();
+
+      if (!data.link_token) {
+        throw new Error("Backend did not return a link token.");
+      }
+
+      setLinkToken(data.link_token);
+    } catch (error) {
+      console.error("Plaid link token error:", error);
+      setMessage("Unable to initialize Plaid. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Exchange the public token after connecting a bank.
+  useEffect(() => {
+    void getLinkToken();
+  }, [getLinkToken]);
+
   const onSuccess = useCallback(async (publicToken: string | null) => {
-  // Make sure Plaid returned a token.
-  if (!publicToken) {
-    setMessage("No public token received from Plaid.");
-    return;
-  }
-    setMessage("Connecting bank...");
+    if (!publicToken) {
+      setMessage("No public token received from Plaid.");
+      return;
+    }
+    setMessage("Connecting your bank...");
 
     try {
       const response = await authFetch("/api/plaid/exchange", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ public_token: publicToken }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          public_token: publicToken,
+        }),
       });
 
-      if (!response.ok) throw new Error("Exchange failed");
+      if (!response.ok) {
+        throw new Error(`Token exchange failed: ${response.status}`);
+      }
 
       clearBankData();
-
+      setConnected(true);
       setMessage("Bank connected successfully!");
-    } catch {
-      setMessage("Bank connection failed.");
+
+      // Refresh bank-related components that listen for this event.
+      window.dispatchEvent(new Event("bank-connected"));
+    } catch (error) {
+      console.error("Plaid exchange error:", error);
+      setMessage("Bank connection failed. Please try again.");
     }
   }, []);
 
@@ -66,13 +90,33 @@ export default function ConnectBankButton() {
       <button
         type="button"
         onClick={() => open()}
-        disabled={!ready}
-        className="rounded-xl bg-blue-700 px-5 py-3 font-semibold text-white disabled:opacity-50"
+        disabled={!ready || loading || connected}
+        className="rounded-xl bg-[#174A82] px-6 py-3 font-semibold text-white transition hover:bg-[#10365F] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {ready ? "Connect Bank" : "Loading Plaid..."}
+        {connected
+          ? "Bank Connected"
+          : loading || (!ready && linkToken)
+            ? "Loading Plaid..."
+            : !linkToken
+              ? "Plaid Unavailable"
+              : "Connect Bank →"}
       </button>
 
-      {message && <p className="text-sm">{message}</p>}
+      {!linkToken && !loading && (
+        <button
+          type="button"
+          onClick={() => void getLinkToken()}
+          className="ml-3 text-sm font-semibold text-[#174A82] underline"
+        >
+          Retry
+        </button>
+      )}
+
+      {message && (
+        <p className="text-sm text-[#475569]" role="status">
+          {message}
+        </p>
+      )}
     </div>
   );
 }

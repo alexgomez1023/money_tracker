@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/ui/Icon";
 import Skeleton from "@/components/ui/Skeleton";
+import { authFetch } from "@/lib/auth";
 
 export default function AIInsight() {
   const [insight, setInsight] = useState("");
@@ -12,7 +13,7 @@ export default function AIInsight() {
   useEffect(() => {
     async function loadInsight() {
       try {
-        const response = await fetch("/api/insights");
+        const response = await authFetch("/api/insights");
 
         if (!response.ok) {
           throw new Error("Failed to load insights");

@@ -1,4 +1,3 @@
-
 import { Router } from "express";
 
 import { prisma } from "../db.js";
@@ -12,9 +11,7 @@ const router = Router();
 // Returns all offers or filters by category.
 router.get("/", async (req, res) => {
   const category =
-    typeof req.query.category === "string"
-      ? req.query.category.trim()
-      : "";
+    typeof req.query.category === "string" ? req.query.category.trim() : "";
 
   const [offers, total] = await getOffers(category);
 
@@ -25,6 +22,7 @@ router.get("/", async (req, res) => {
 // Returns offers based on the signed-in user's spending.
 router.get("/personalized", requireAuth, async (req, res) => {
   try {
+    console.log("[TEST] Personalized offers endpoint reached");
     const offers = await getPersonalizedOffers(req.userId);
 
     res.json({

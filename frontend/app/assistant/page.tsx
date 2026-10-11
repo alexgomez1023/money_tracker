@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Card from "@/components/ui/Card";
+import { authFetch } from "@/lib/auth";
 import { loadBudgets } from "@/lib/budget-storage";
 import { getSavingsGoals } from "@/lib/plaid-savings";
 
@@ -78,7 +79,7 @@ export default function AssistantPage() {
       const savingsGoals = getSavingsGoals();
 
       // Send dashboard preferences with the question.
-      const response = await fetch("/api/finance-chat", {
+      const response = await authFetch("/api/finance-chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

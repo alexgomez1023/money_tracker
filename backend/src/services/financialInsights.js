@@ -2,10 +2,12 @@ import { GoogleGenAI } from "@google/genai";
 
 function summarizeTransactions(transactions) {
   const expenses = transactions.filter(
-    (t) => !t.pending && t.amount > 0 &&
+    (t) =>
+      !t.pending &&
+      t.amount > 0 &&
       !["TRANSFER_IN", "TRANSFER_OUT", "LOAN_PAYMENTS"].includes(
-        t.personal_finance_category?.primary
-      )
+        t.personal_finance_category?.primary,
+      ),
   );
 
   const totalSpent = expenses.reduce((sum, t) => sum + t.amount, 0);
@@ -13,11 +15,9 @@ function summarizeTransactions(transactions) {
   const categories = {};
 
   for (const transaction of expenses) {
-    const category =
-      transaction.personal_finance_category?.primary || "OTHER";
+    const category = transaction.personal_finance_category?.primary || "OTHER";
 
-    categories[category] =
-      (categories[category] || 0) + transaction.amount;
+    categories[category] = (categories[category] || 0) + transaction.amount;
   }
 
   return {

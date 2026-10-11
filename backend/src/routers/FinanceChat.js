@@ -1,10 +1,11 @@
 import { Router } from "express";
-import { plaidClient } from "../services/Plaid.js";
+import { requireAuth } from "../middleware/requireAuth.js";
+import { getAccounts, getTransactions } from "../services/Plaid.js";
 import { answerFinancialQuestion } from "../services/financeChatGemini.js";
 
 const router = Router();
 
-router.post("/finance-chat", async (req, res, next) => {
+router.post("/finance-chat", requireAuth, async (req, res, next) => {
   try {
     const question = req.body?.message;
 
@@ -28,41 +29,15 @@ router.post("/finance-chat", async (req, res, next) => {
       });
     }
 
-    const connection = req.app.locals.plaidDemoConnection;
+    const { transactions } = await getTransactions(req.userId);
 
-    if (!connection?.accessToken) {
-      return res.status(400).json({
-        error: "Connect your bank before using the assistant.",
-      });
-    }
+    const accounts = await getAccounts(req.userId);
 
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 30);
-
-    const response = await plaidClient.transactionsGet({
-      access_token: connection.accessToken,
-      start_date: startDate.toISOString().split("T")[0],
-      end_date: endDate.toISOString().split("T")[0],
-      options: {
-        count: 100,
-        offset: 0,
-      },
+    const result = await answerFinancialQuestion(question.trim(), transactions, {
+      budgets: req.body?.budgets,
+      savingsGoals: req.body?.savingsGoals,
+      accounts,
     });
-
-    const accountsResponse = await plaidClient.accountsGet({
-  access_token: connection.accessToken,
-});
-
-const result = await answerFinancialQuestion(
-  question.trim(),
-  response.data.transactions,
-  {
-    budgets: req.body?.budgets,
-    savingsGoals: req.body?.savingsGoals,
-    accounts: accountsResponse.data.accounts,
-  }
-);
 
     res.json(result);
   } catch (error) {
