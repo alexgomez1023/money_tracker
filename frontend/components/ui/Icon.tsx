@@ -27,12 +27,15 @@ interface IconProps {
   name: IconName;
   size?: number;
   className?: string;
+  // Tints the inside of the icon. Used to mark the current tab.
+  filled?: boolean;
 }
 
 export default function Icon({
   name,
   size = 20,
   className = "",
+  filled = false,
 }: IconProps) {
   // SVG paths that draw each icon
   const paths: Record<IconName, ReactNode> = {
@@ -161,7 +164,8 @@ export default function Icon({
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
+      fill={filled ? "currentColor" : "none"}
+      fillOpacity={filled ? 0.2 : undefined}
       stroke="currentColor"
       strokeWidth="1.8"
       strokeLinecap="round"

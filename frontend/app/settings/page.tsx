@@ -1,6 +1,7 @@
 
 "use client";
 
+import Button, { buttonClass } from "@/components/ui/Button";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -21,6 +22,7 @@ import {
 } from "@/lib/auth";
 import { clearBankData } from "@/lib/bank-data";
 import { formatPhone } from "@/lib/phone";
+import { showToast } from "@/lib/toast";
 
 type BankItem = {
   id: string;
@@ -41,7 +43,7 @@ export default function SettingsPage() {
             Your account
           </p>
 
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-primary">
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-primary">
             Settings
           </h1>
 
@@ -57,7 +59,7 @@ export default function SettingsPage() {
           />
         ) : (
           <Card>
-            <h2 className="font-bold text-primary">
+            <h2 className="text-lg font-bold text-primary">
               You&apos;re not logged in
             </h2>
 
@@ -67,14 +69,23 @@ export default function SettingsPage() {
 
             <Link
               href="/login"
-              className="mt-5 block w-full rounded-xl bg-primary px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-primary-hover"
+              className={buttonClass({
+            size: "lg",
+            fullWidth: true,
+            className: "mt-5",
+          })}
             >
               Log In
             </Link>
 
             <Link
               href="/signup"
-              className="mt-3 block w-full rounded-xl border border-border-custom bg-white px-4 py-3 text-center text-sm font-semibold text-primary transition hover:bg-surface-blue"
+              className={buttonClass({
+            variant: "secondary",
+            size: "lg",
+            fullWidth: true,
+            className: "mt-3",
+          })}
             >
               Create an Account
             </Link>
@@ -92,7 +103,6 @@ function SettingsSections({ session }: { session: Session }) {
   const [name, setName] = useState(session.user.name);
   const [email, setEmail] = useState(session.user.email ?? "");
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
@@ -111,7 +121,6 @@ function SettingsSections({ session }: { session: Session }) {
   // Delete account
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState("");
 
   // Load the agent's number saved on the user's account.
   useEffect(() => {
@@ -163,20 +172,19 @@ function SettingsSections({ session }: { session: Session }) {
 
   async function handleSaveProfile() {
     setSaving(true);
-    setSaved(false);
     setProfileError("");
     setFieldErrors({});
 
     try {
       await updateProfile({ name, email });
 
-      setSaved(true);
+      showToast("Profile saved.");
     } catch (err) {
       if (err instanceof AuthError) {
         setProfileError(err.message);
         setFieldErrors(err.fields);
       } else {
-        setProfileError("Unable to reach the server. Try again.");
+        showToast("Unable to reach the server. Try again.", "error");
       }
     } finally {
       setSaving(false);
@@ -200,8 +208,10 @@ function SettingsSections({ session }: { session: Session }) {
       setBanks((current) =>
         current.filter((bank) => bank.id !== id)
       );
+
+      showToast("Bank disconnected.");
     } catch {
-      setBanksError("Unable to disconnect that bank. Try again.");
+      showToast("Unable to disconnect that bank. Try again.", "error");
     } finally {
       setRemovingId(null);
     }
@@ -215,7 +225,6 @@ function SettingsSections({ session }: { session: Session }) {
 
   async function handleDeleteAccount() {
     setDeleting(true);
-    setDeleteError("");
 
     try {
       await deleteAccount();
@@ -223,7 +232,7 @@ function SettingsSections({ session }: { session: Session }) {
       clearBankData();
       router.push("/signup");
     } catch {
-      setDeleteError("Unable to delete your account. Try again.");
+      showToast("Unable to delete your account. Try again.", "error");
       setDeleting(false);
     }
   }
@@ -233,7 +242,7 @@ function SettingsSections({ session }: { session: Session }) {
 
       {/* Profile */}
       <Card>
-        <h2 className="font-bold text-primary">
+        <h2 className="text-lg font-bold text-primary">
           Profile
         </h2>
 
@@ -283,19 +292,14 @@ function SettingsSections({ session }: { session: Session }) {
             </p>
           )}
 
-          {saved && (
-            <p role="status" className="text-sm text-secondary">
-              Profile saved.
-            </p>
-          )}
-
-          <button
+          <Button
             type="submit"
             disabled={saving}
-            className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-60"
+            size="lg"
+            fullWidth
           >
             {saving ? "Saving..." : "Save Changes"}
-          </button>
+          </Button>
         </form>
       </Card>
 
@@ -347,7 +351,7 @@ function SettingsSections({ session }: { session: Session }) {
       {/* Connected Banks */}
       <Card>
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-bold text-primary">
+          <h2 className="text-lg font-bold text-primary">
             Connected Banks
           </h2>
 
@@ -395,16 +399,18 @@ function SettingsSections({ session }: { session: Session }) {
                   </p>
                 </div>
 
-                <button
+                <Button
                   type="button"
                   onClick={() => handleRemoveBank(bank.id)}
                   disabled={removingId === bank.id}
-                  className="shrink-0 rounded-xl border border-border-custom bg-white px-4 py-2 text-xs font-semibold text-primary transition hover:bg-surface-blue disabled:opacity-60"
+                  variant="secondary"
+                  size="sm"
+                  className="shrink-0"
                 >
                   {removingId === bank.id
                     ? "Disconnecting..."
                     : "Disconnect"}
-                </button>
+                </Button>
               </div>
             ))}
           </div>
@@ -419,17 +425,20 @@ function SettingsSections({ session }: { session: Session }) {
 
       {/* Account */}
       <Card>
-        <h2 className="font-bold text-primary">
+        <h2 className="text-lg font-bold text-primary">
           Account
         </h2>
 
-        <button
+        <Button
           type="button"
           onClick={handleLogout}
-          className="mt-5 w-full rounded-xl border border-border-custom bg-white px-4 py-3 text-sm font-semibold text-primary transition hover:bg-surface-blue"
+          variant="secondary"
+          size="lg"
+          fullWidth
+          className="mt-5"
         >
           Log Out
-        </button>
+        </Button>
 
         <div className="mt-5 border-t border-border-custom pt-5">
           <p className="text-sm font-semibold text-accent">
@@ -442,40 +451,39 @@ function SettingsSections({ session }: { session: Session }) {
             undone.
           </p>
 
-          {deleteError && (
-            <p role="alert" className="mt-3 text-sm text-accent">
-              {deleteError}
-            </p>
-          )}
-
           {confirmingDelete ? (
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <button
+              <Button
                 type="button"
                 onClick={() => setConfirmingDelete(false)}
                 disabled={deleting}
-                className="rounded-xl border border-border-custom bg-white px-4 py-3 text-sm font-semibold text-primary transition hover:bg-surface-blue disabled:opacity-60"
+                variant="secondary"
+                size="lg"
               >
                 Cancel
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
                 onClick={handleDeleteAccount}
                 disabled={deleting}
-                className="rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                variant="danger"
+                size="lg"
               >
                 {deleting ? "Deleting..." : "Yes, Delete"}
-              </button>
+              </Button>
             </div>
           ) : (
-            <button
+            <Button
               type="button"
               onClick={() => setConfirmingDelete(true)}
-              className="mt-4 w-full rounded-xl border border-accent bg-white px-4 py-3 text-sm font-semibold text-accent transition hover:bg-accent hover:text-white"
+              variant="dangerOutline"
+              size="lg"
+              fullWidth
+              className="mt-4"
             >
               Delete Account
-            </button>
+            </Button>
           )}
         </div>
       </Card>

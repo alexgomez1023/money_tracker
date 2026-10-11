@@ -86,9 +86,4 @@ export function getTotalAllocated(goals: SavingsGoal[]) {
   );
 }
 
-export function formatMoney(amount: number) {
-  return amount.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-  });
-}
+export { formatMoney } from "@/lib/format";

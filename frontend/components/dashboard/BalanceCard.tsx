@@ -4,7 +4,14 @@
 import { useEffect, useState } from "react";
 import Icon from "@/components/ui/Icon";
 import Skeleton from "@/components/ui/Skeleton";
-import { getAccounts, getTransactions } from "@/lib/bank-data";
+import BankErrorNotice from "@/components/ui/BankErrorNotice";
+import {
+  getAccounts,
+  getBankErrorReason,
+  getTransactions,
+  type BankErrorReason,
+} from "@/lib/bank-data";
+import { formatMoney } from "@/lib/format";
 
 type PlaidAccount = {
   account_id: string;
@@ -32,7 +39,7 @@ export default function BalanceCard() {
   const [monthlyIncome, setMonthlyIncome] = useState(0);
   const [monthlySpending, setMonthlySpending] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<BankErrorReason | "">("");
 
   useEffect(() => {
     async function loadFinances() {
@@ -95,8 +102,8 @@ export default function BalanceCard() {
 
         setMonthlyIncome(income);
         setMonthlySpending(spending);
-      } catch {
-        setError("Connect a bank to view your balance.");
+      } catch (err) {
+        setError(getBankErrorReason(err));
       } finally {
         setLoading(false);
       }
@@ -105,16 +112,10 @@ export default function BalanceCard() {
     loadFinances();
   }, []);
 
-  const formatMoney = (amount: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-
   const hidden = "••••••";
 
   return (
-    <section className="rounded-3xl bg-primary p-6 text-white shadow-md md:p-8">
+    <section className="rounded-2xl bg-primary p-6 text-white shadow-md md:p-8">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-blue-100">
           <Icon name="wallet" size={18} />
@@ -127,7 +128,7 @@ export default function BalanceCard() {
           type="button"
           onClick={() => setShowBalance(!showBalance)}
           aria-label={showBalance ? "Hide balance" : "Show balance"}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-blue-100 hover:bg-white/10"
+          className="flex h-9 w-9 items-center justify-center rounded-xl text-blue-100 hover:bg-white/10"
         >
           <Icon name={showBalance ? "eye" : "eyeOff"} />
         </button>
@@ -148,7 +149,7 @@ export default function BalanceCard() {
       </p>
 
       {error && (
-        <p className="mt-3 text-sm text-blue-100">{error}</p>
+        <BankErrorNotice reason={error} tone="onPrimary" className="mt-4" />
       )}
 
       <div className="mt-7 grid grid-cols-2 gap-4 border-t border-white/20 pt-5">
@@ -160,7 +161,7 @@ export default function BalanceCard() {
             {loading
               ? <Skeleton className="h-7 w-24 !bg-white/20" />
               : error
-              ? "—"
+              ? "N/A"
               : showBalance
               ? `+${formatMoney(monthlyIncome)}`
               : hidden}
@@ -175,7 +176,7 @@ export default function BalanceCard() {
             {loading
               ? <Skeleton className="h-7 w-24 !bg-white/20" />
               : error
-              ? "—"
+              ? "N/A"
               : showBalance
               ? `-${formatMoney(monthlySpending)}`
               : hidden}

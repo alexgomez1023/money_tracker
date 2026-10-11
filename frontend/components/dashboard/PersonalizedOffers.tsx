@@ -1,10 +1,12 @@
 
 "use client";
 
+import Button from "@/components/ui/Button";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import Card from "@/components/ui/Card";
+import Skeleton from "@/components/ui/Skeleton";
 import { authFetch, useSession } from "@/lib/auth";
 
 type Offer = {
@@ -23,6 +25,9 @@ export default function PersonalizedOffers() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Raised by the Retry button to load the offers again.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,7 +74,7 @@ export default function PersonalizedOffers() {
     return () => {
       cancelled = true;
     };
-  }, [session?.user.id]);
+  }, [session?.user.id, attempt]);
 
   return (
     <Card>
@@ -97,13 +102,40 @@ export default function PersonalizedOffers() {
           Sign in to discover discounts based on your spending.
         </p>
       ) : loading ? (
-        <p className="mt-5 text-sm text-muted">
-          Finding offers for you...
-        </p>
+        <div
+          className="mt-5 space-y-4"
+          aria-label="Finding offers for you"
+        >
+          {Array.from({ length: 3 }, (_, index) => (
+            <div
+              key={index}
+              className="rounded-xl border border-border-custom p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-5 w-16 !rounded-full" />
+              </div>
+
+              <Skeleton className="mt-3 h-6 w-44" />
+              <Skeleton className="mt-3 h-4 w-full" />
+            </div>
+          ))}
+        </div>
       ) : error ? (
-        <p className="mt-5 text-sm text-muted">
-          {error}
-        </p>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <p className="text-sm text-muted">
+            {error}
+          </p>
+
+          <Button
+            type="button"
+            onClick={() => setAttempt(attempt + 1)}
+            variant="secondary"
+            size="sm"
+          >
+            Retry
+          </Button>
+        </div>
       ) : offers.length === 0 ? (
         <p className="mt-5 text-sm text-muted">
           No personalized offers yet. Connect your bank and

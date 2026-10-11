@@ -6,7 +6,13 @@ import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Icon from "@/components/ui/Icon";
 import { SkeletonRows } from "@/components/ui/Skeleton";
-import { getTransactions } from "@/lib/bank-data";
+import BankErrorNotice from "@/components/ui/BankErrorNotice";
+import {
+  getBankErrorReason,
+  getTransactions,
+  type BankErrorReason,
+} from "@/lib/bank-data";
+import { formatCategory, formatDate, formatMoney } from "@/lib/format";
 
 type PlaidTransaction = {
   transaction_id: string;
@@ -22,7 +28,7 @@ type PlaidTransaction = {
 export default function RecentTransactions() {
   const [transactions, setTransactions] = useState<PlaidTransaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<BankErrorReason | "">("");
 
   // Load Plaid transactions.
   useEffect(() => {
@@ -30,8 +36,8 @@ export default function RecentTransactions() {
       try {
         const data = await getTransactions<PlaidTransaction>();
         setTransactions(data.transactions ?? []);
-      } catch {
-        setError("Connect a bank to view transactions.");
+      } catch (err) {
+        setError(getBankErrorReason(err));
       } finally {
         setLoading(false);
       }
@@ -60,9 +66,7 @@ export default function RecentTransactions() {
         {loading && <SkeletonRows count={5} />}
 
         {error && (
-          <p className="p-5 text-sm text-muted">
-            {error}
-          </p>
+          <BankErrorNotice reason={error} className="p-5" />
         )}
 
         {!loading && !error && transactions.length === 0 && (
@@ -76,10 +80,9 @@ export default function RecentTransactions() {
             {transactions.slice(0, 5).map((transaction) => {
               const isExpense = transaction.amount > 0;
 
-              const category =
+              const category = formatCategory(
                 transaction.personal_finance_category?.primary
-                  ?.replaceAll("_", " ")
-                  .toLowerCase() ?? "Other";
+              );
 
               return (
                 <div
@@ -96,8 +99,8 @@ export default function RecentTransactions() {
                         {transaction.merchant_name || transaction.name}
                       </p>
 
-                      <p className="mt-1 text-xs capitalize text-muted">
-                        {category} · {transaction.date}
+                      <p className="mt-1 text-xs text-muted">
+                        {category} · {formatDate(transaction.date)}
                       </p>
                     </div>
                   </div>
@@ -107,8 +110,8 @@ export default function RecentTransactions() {
                       isExpense ? "text-foreground" : "text-secondary"
                     }`}
                   >
-                    {isExpense ? "-" : "+"}$
-                    {Math.abs(transaction.amount).toFixed(2)}
+                    {isExpense ? "-" : "+"}
+                    {formatMoney(Math.abs(transaction.amount))}
                   </p>
                 </div>
               );

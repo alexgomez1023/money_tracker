@@ -18,11 +18,16 @@ export async function fetchStudentOffers() {
     .filter((o) => o.id && o.name && o.offer)
     .map((o) => ({
       externalId: o.id,
-      name: o.name,
-      offer: o.offer,
-      description: o.description ?? "",
+      name: removeEmDashes(o.name),
+      offer: removeEmDashes(o.offer),
+      description: removeEmDashes(o.description ?? ""),
       category: getCategory(o),
     }));
+}
+
+// "45% off Premium — $5.99/mo" -> "45% off Premium, $5.99/mo"
+function removeEmDashes(text) {
+  return text.replaceAll(" — ", ", ").replaceAll("—", ", ");
 }
 
 const DEFAULT_CATEGORY = "other";

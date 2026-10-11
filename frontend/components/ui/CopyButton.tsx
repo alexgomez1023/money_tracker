@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import Icon from "@/components/ui/Icon";
+import { showToast } from "@/lib/toast";
 
 // How long the checkmark stays before the copy icon comes back.
 const COPIED_MS = 2000;
@@ -25,8 +26,11 @@ export default function CopyButton({
 
       setCopied(true);
       setTimeout(() => setCopied(false), COPIED_MS);
+
+      showToast("Number copied.");
     } catch {
       // Clipboard access was blocked, so the icon stays as it is.
+      showToast("Couldn't copy the number.", "error");
     }
   }
 

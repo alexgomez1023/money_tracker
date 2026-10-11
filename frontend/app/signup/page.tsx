@@ -1,6 +1,7 @@
 
 "use client";
 
+import Button, { buttonClass } from "@/components/ui/Button";
 import { useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
@@ -85,7 +86,7 @@ export default function SignupPage() {
               Account created
             </p>
 
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-primary">
+            <h1 className="mt-1 text-3xl font-bold tracking-tight text-primary">
               Welcome, {session.user.name}
             </h1>
 
@@ -135,7 +136,7 @@ export default function SignupPage() {
           </div>
 
           <Card>
-            <h2 className="font-bold text-primary">
+            <h2 className="text-lg font-bold text-primary">
               Next step
             </h2>
 
@@ -147,7 +148,11 @@ export default function SignupPage() {
             <Link
               href="/connect-bank"
               onClick={() => setSession(null)}
-              className="mt-5 block w-full rounded-xl bg-primary px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-primary-hover"
+              className={buttonClass({
+                size: "lg",
+                fullWidth: true,
+                className: "mt-5",
+              })}
             >
               Connect Your Bank
             </Link>
@@ -155,7 +160,12 @@ export default function SignupPage() {
             <Link
               href="/"
               onClick={() => setSession(null)}
-              className="mt-3 block w-full rounded-xl border border-border-custom bg-white px-4 py-3 text-center text-sm font-semibold text-primary transition hover:bg-surface-blue"
+              className={buttonClass({
+                variant: "secondary",
+                size: "lg",
+                fullWidth: true,
+                className: "mt-3",
+              })}
             >
               Go to Dashboard
             </Link>
@@ -175,7 +185,7 @@ export default function SignupPage() {
             Money Tracker
           </p>
 
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-primary">
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-primary">
             Create your account
           </h1>
 
@@ -238,13 +248,14 @@ export default function SignupPage() {
               </p>
             )}
 
-            <button
+            <Button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-60"
+              size="lg"
+              fullWidth
             >
               {submitting ? "Creating account..." : "Sign Up"}
-            </button>
+            </Button>
           </form>
         </Card>
 

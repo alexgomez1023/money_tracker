@@ -1,9 +1,17 @@
 
 "use client";
 
+import Button from "@/components/ui/Button";
 import { useCallback, useEffect, useState } from "react";
+import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
-import { getAccounts } from "@/lib/bank-data";
+import BankErrorNotice from "@/components/ui/BankErrorNotice";
+import {
+  getAccounts,
+  getBankErrorReason,
+  type BankErrorReason,
+} from "@/lib/bank-data";
+import { formatMoney } from "@/lib/format";
 
 type BankAccount = {
   account_id: string;
@@ -21,7 +29,7 @@ type BankAccount = {
 export default function BankAccounts() {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<BankErrorReason | "">("");
 
   // Retrieve connected bank accounts from our backend.
   const loadAccounts = useCallback(async (fresh = false) => {
@@ -31,8 +39,8 @@ export default function BankAccounts() {
     try {
       const data = await getAccounts<BankAccount>(fresh);
       setAccounts(data.accounts ?? []);
-    } catch {
-      setError("Unable to load accounts. Connect a bank first.");
+    } catch (err) {
+      setError(getBankErrorReason(err));
       setAccounts([]);
     } finally {
       setLoading(false);
@@ -44,92 +52,99 @@ export default function BankAccounts() {
     loadAccounts();
   }, [loadAccounts]);
 
-  // Format balances as currency.
-  const formatMoney = (amount: number | null, currency: string | null) => {
+  // Some accounts report no balance, or no currency.
+  const formatBalance = (amount: number | null, currency: string | null) => {
     if (amount === null) return "N/A";
 
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency || "USD",
-    }).format(amount);
+    return formatMoney(amount, currency || "USD");
   };
 
   return (
-    <section className="mt-8 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">Your Bank Accounts</h2>
+    <section className="mt-8">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-lg font-bold text-primary">
+          Your accounts
+        </h2>
 
-        <button
+        <Button
           type="button"
           onClick={() => loadAccounts(true)}
           disabled={loading}
-          className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50"
+          variant="secondary"
+          size="sm"
         >
           Refresh
-        </button>
+        </Button>
       </div>
 
       {loading && (
         <div className="grid gap-4 sm:grid-cols-2">
           {Array.from({ length: 2 }, (_, index) => (
-            <div
-              key={index}
-              className="rounded-xl border p-5 shadow-sm"
-            >
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="mt-2 h-6 w-40" />
-              <Skeleton className="mt-4 h-8 w-32" />
-            </div>
+            <Card key={index}>
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="mt-3 h-5 w-40" />
+              <Skeleton className="mt-5 h-8 w-32" />
+            </Card>
           ))}
         </div>
       )}
 
-      {error && <p className="text-red-600">{error}</p>}
-
-      {!loading && !error && accounts.length === 0 && (
-        <p>No bank accounts found.</p>
+      {error && (
+        <Card>
+          <BankErrorNotice
+            reason={error}
+            onRetry={() => loadAccounts(true)}
+          />
+        </Card>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {!loading && accounts.map((account) => (
-          <div
-            key={account.account_id}
-            className="rounded-xl border p-5 shadow-sm"
-          >
-            <p className="text-sm text-gray-500">
-              {account.subtype || account.type}
-              {account.mask ? ` ••••${account.mask}` : ""}
-            </p>
+      {!loading && !error && accounts.length === 0 && (
+        <Card>
+          <p className="text-sm text-muted">
+            No bank accounts found.
+          </p>
+        </Card>
+      )}
 
-            <h3 className="mt-1 text-lg font-semibold">
-              {account.name}
-            </h3>
+      {!loading && accounts.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {accounts.map((account) => (
+            <Card key={account.account_id}>
+              <p className="text-xs font-medium capitalize text-muted">
+                {account.subtype || account.type}
+                {account.mask ? ` ••••${account.mask}` : ""}
+              </p>
 
-            <p className="mt-3 text-2xl font-bold">
-              {formatMoney(
-                account.balances.current,
-                account.balances.iso_currency_code
-              )}
-            </p>
+              <h3 className="mt-1 text-base font-semibold text-foreground">
+                {account.name}
+              </h3>
 
-            <p className="text-sm text-gray-500">
-              {account.type === "credit"
-                ? "Outstanding balance"
-                : "Current balance"}
-            </p>
-
-            {account.type !== "credit" && (
-              <p className="mt-2 text-sm">
-                Available:{" "}
-                {formatMoney(
-                  account.balances.available,
+              <p className="mt-4 font-display text-2xl font-bold tracking-tight text-primary">
+                {formatBalance(
+                  account.balances.current,
                   account.balances.iso_currency_code
                 )}
               </p>
-            )}
-          </div>
-        ))}
-      </div>
+
+              <p className="mt-1 text-xs text-muted">
+                {account.type === "credit"
+                  ? "Outstanding balance"
+                  : "Current balance"}
+              </p>
+
+              {account.type !== "credit" && (
+                <p className="mt-3 text-sm text-foreground">
+                  Available:{" "}
+                  {formatBalance(
+                    account.balances.available,
+                    account.balances.iso_currency_code
+                  )}
+                </p>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

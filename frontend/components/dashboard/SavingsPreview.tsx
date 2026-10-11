@@ -13,12 +13,17 @@ import {
   type SavingsGoal,
 } from "@/lib/plaid-savings";
 import Skeleton from "@/components/ui/Skeleton";
+import BankErrorNotice from "@/components/ui/BankErrorNotice";
+import {
+  getBankErrorReason,
+  type BankErrorReason,
+} from "@/lib/bank-data";
 
 export default function SavingsPreview() {
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<BankErrorReason | "">("");
 
   // Synchronize savings goals across pages.
   useEffect(() => {
@@ -45,8 +50,8 @@ export default function SavingsPreview() {
       try {
         const amount = await fetchSavingsBalance();
         setBalance(amount);
-      } catch {
-        setError(true);
+      } catch (err) {
+        setError(getBankErrorReason(err));
       } finally {
         setLoading(false);
       }
@@ -98,7 +103,7 @@ export default function SavingsPreview() {
           Connected Savings Balance
         </p>
 
-        <p className="mt-2 text-xl font-bold text-primary">
+        <p className="mt-2 text-lg font-bold text-primary">
           {loading
             ? <Skeleton className="h-7 w-28 !bg-white" />
             : error
@@ -107,14 +112,18 @@ export default function SavingsPreview() {
         </p>
 
         <p className="mt-1 text-xs text-muted">
-          Balance from Plaid Sandbox savings accounts
+          Balance from your connected savings accounts
         </p>
       </div>
+
+      {error && (
+        <BankErrorNotice reason={error} className="mt-4" />
+      )}
 
       {/* Goal Progress */}
       <div className="mt-6 flex items-end justify-between gap-2">
         <div>
-          <span className="text-2xl font-bold text-primary">
+          <span className="font-display text-2xl font-bold tracking-tight text-primary">
             {formatMoney(totalAllocated)}
           </span>
 
@@ -127,7 +136,7 @@ export default function SavingsPreview() {
           {loading ? (
             <Skeleton className="h-4 w-10" />
           ) : error ? (
-            "—"
+            "N/A"
           ) : (
             `${Math.round(progress)}%`
           )}

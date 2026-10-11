@@ -1,9 +1,11 @@
 "use client";
 
+import Button from "@/components/ui/Button";
 import { useCallback, useEffect, useState } from "react";
 import { usePlaidLink } from "react-plaid-link";
 import { authFetch } from "@/lib/auth";
 import { clearBankData } from "@/lib/bank-data";
+import { showToast } from "@/lib/toast";
 
 export default function ConnectBankButton() {
   const [linkToken, setLinkToken] = useState<string | null>(null);
@@ -36,7 +38,7 @@ export default function ConnectBankButton() {
       setLinkToken(data.link_token);
     } catch (error) {
       console.error("Plaid link token error:", error);
-      setMessage("Unable to initialize Plaid. Please try again.");
+      setMessage("Unable to start the bank connection. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -48,7 +50,10 @@ export default function ConnectBankButton() {
 
   const onSuccess = useCallback(async (publicToken: string | null) => {
     if (!publicToken) {
-      setMessage("No public token received from Plaid.");
+      showToast(
+        "The bank connection did not finish. Please try again.",
+        "error",
+      );
       return;
     }
     setMessage("Connecting your bank...");
@@ -70,13 +75,17 @@ export default function ConnectBankButton() {
 
       clearBankData();
       setConnected(true);
-      setMessage("Bank connected successfully!");
+      setMessage("");
+
+      showToast("Bank connected.");
 
       // Refresh bank-related components that listen for this event.
       window.dispatchEvent(new Event("bank-connected"));
     } catch (error) {
       console.error("Plaid exchange error:", error);
-      setMessage("Bank connection failed. Please try again.");
+      setMessage("");
+
+      showToast("Bank connection failed. Please try again.", "error");
     }
   }, []);
 
@@ -87,33 +96,33 @@ export default function ConnectBankButton() {
 
   return (
     <div className="space-y-3">
-      <button
+      <Button
         type="button"
         onClick={() => open()}
         disabled={!ready || loading || connected}
-        className="rounded-xl bg-[#174A82] px-6 py-3 font-semibold text-white transition hover:bg-[#10365F] disabled:cursor-not-allowed disabled:opacity-50"
+        size="lg"
       >
         {connected
           ? "Bank Connected"
           : loading || (!ready && linkToken)
-            ? "Loading Plaid..."
+            ? "Loading..."
             : !linkToken
-              ? "Plaid Unavailable"
-              : "Connect Bank →"}
-      </button>
+              ? "Unavailable"
+              : "Connect Bank"}
+      </Button>
 
       {!linkToken && !loading && (
         <button
           type="button"
           onClick={() => void getLinkToken()}
-          className="ml-3 text-sm font-semibold text-[#174A82] underline"
+          className="ml-3 text-sm font-semibold text-secondary hover:underline"
         >
           Retry
         </button>
       )}
 
       {message && (
-        <p className="text-sm text-[#475569]" role="status">
+        <p className="text-sm text-muted" role="status">
           {message}
         </p>
       )}

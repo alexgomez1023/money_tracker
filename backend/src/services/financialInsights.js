@@ -66,7 +66,7 @@ export async function generateFinancialInsight(transactions) {
     model: process.env.GEMINI_MODEL || "gemini-3.8-flash",
     contents:
       "Analyze this recent spending summary and provide one specific, " +
-      "practical financial insight in 2 sentences. " +
+      "practical financial insight in 1 sentence. " +
       "Do not invent savings amounts or claim that spending is unusual " +
       "without historical data. Do not provide investment advice.\n\n" +
       JSON.stringify(summary),

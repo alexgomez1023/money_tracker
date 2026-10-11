@@ -1,6 +1,8 @@
 
 "use client";
 
+import Button from "@/components/ui/Button";
+import Chip from "@/components/ui/Chip";
 import { useEffect, useRef, useState } from "react";
 import Card from "@/components/ui/Card";
 import { authFetch } from "@/lib/auth";
@@ -375,7 +377,7 @@ export default function AssistantPage() {
               Your Financial Companion
             </p>
 
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-primary">
+            <h1 className="mt-1 text-3xl font-bold tracking-tight text-primary">
               AI Finance Assistant
             </h1>
 
@@ -384,13 +386,15 @@ export default function AssistantPage() {
             </p>
           </div>
 
-          <button
+          <Button
             type="button"
             onClick={clearChat}
-            className="shrink-0 rounded-xl border border-border-custom bg-white px-3 py-2 text-xs font-semibold text-primary hover:bg-surface-blue"
+            variant="secondary"
+            size="sm"
+            className="shrink-0"
           >
             New Chat
-          </button>
+          </Button>
         </header>
 
         {/* Chat Messages */}
@@ -517,15 +521,13 @@ export default function AssistantPage() {
 
           <div className="flex flex-wrap gap-2">
             {suggestedQuestions.map((question) => (
-              <button
+              <Chip
                 key={question}
-                type="button"
                 onClick={() => sendMessage(question)}
                 disabled={isTyping}
-                className="rounded-full border border-border-custom bg-white px-4 py-2 text-xs font-semibold text-primary transition hover:border-secondary hover:bg-surface-blue disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {question}
-              </button>
+              </Chip>
             ))}
           </div>
         </section>
@@ -567,13 +569,14 @@ export default function AssistantPage() {
             className="max-h-32 min-h-12 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-foreground outline-none placeholder:text-muted"
           />
 
-          <button
+          <Button
             type="submit"
             disabled={!input.trim() || isTyping}
-            className="shrink-0 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+            size="lg"
+            className="shrink-0"
           >
             Send
-          </button>
+          </Button>
         </form>
 
         <p className="mt-3 text-center text-xs text-muted">
