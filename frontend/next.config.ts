@@ -28,6 +28,10 @@ const nextConfig: NextConfig = {
         destination: "http://localhost:3001/auth/:path*",
       },
       {
+        source: "/api/budgets",
+        destination: "http://localhost:3001/budgets",
+      },
+      {
         source: "/api/me",
         destination: "http://localhost:3001/me",
       },
